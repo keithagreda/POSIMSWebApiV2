@@ -48,20 +48,28 @@ namespace POSIMSWebApi.Application.Services
         }
         public async Task<Result<string>> CreateStorageLocation(CreateOrEditStorageLocationDto input)
         {
-            var validation = await ValidateStorageLocation(input);
-            if (!validation.IsSuccess)
+            try
             {
-                return validation;
-            }
-            var newStorageLoc = new StorageLocation
-            {
-                Name = input.Name,
-                Description = input.Description,
-            };
+                var validation = await ValidateStorageLocation(input);
+                if (!validation.IsSuccess)
+                {
+                    return validation;
+                }
+                var newStorageLoc = new StorageLocation
+                {
+                    Name = input.Name,
+                    Description = input.Description,
+                };
 
-            await _unitOfWork.StorageLocation.AddAsync(newStorageLoc);
-            _unitOfWork.Complete();
-            return "Success!";
+                await _unitOfWork.StorageLocation.AddAsync(newStorageLoc);
+                _unitOfWork.Complete();
+                return "Success!";
+            }
+            catch (Exception ex)
+            {
+
+                throw new Exception(ex.Message);
+            }
         }
     }
 }

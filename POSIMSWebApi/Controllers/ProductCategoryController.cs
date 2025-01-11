@@ -59,16 +59,13 @@ namespace POSIMSWebApi.Controllers
         {
             try
             {
-                
+
                 var productCategory = new ProductCategory
                 {
                     Name = input.Name,
                     CreationTime = DateTimeOffset.Now,
-                    CreatedBy = 1,
-                    ModifiedBy = 0,
-                    DeletedBy = 0,
                 };
-                _unitOfWork.ProductCategory.Add(productCategory);
+                await _unitOfWork.ProductCategory.AddAsync(productCategory);
                 _unitOfWork.Complete();
                 return Ok();
             }
@@ -78,6 +75,6 @@ namespace POSIMSWebApi.Controllers
                 throw new Exception(ex.Message);
             }
         }
-       
+
     }
 }

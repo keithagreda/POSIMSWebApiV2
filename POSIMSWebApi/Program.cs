@@ -1,5 +1,3 @@
-using DataAccess.EFCore;
-using DataAccess.EFCore.UnitOfWorks;
 using Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using POSIMSWebApi;
@@ -20,6 +18,7 @@ using POSIMSWebApi.Authentication.Interface;
 using POSIMSWebApi.Authentication.Services;
 using System.Security.Claims;
 using POSIMSWebApi.Authentication.AuthorizationHelper;
+using POSIMSWebApi.UnitOfWorks;
 
 var builder = WebApplication.CreateBuilder(args);
 

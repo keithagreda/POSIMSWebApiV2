@@ -2,6 +2,7 @@
 using Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using POSIMSWebApi.Application.Dtos.Pagination;
@@ -20,10 +21,12 @@ namespace POSIMSWebApi.Controllers
     {
         private readonly ISalesService _salesService;
         private readonly IUnitOfWork _unitOfWork;
-        public SalesController(ISalesService salesService, IUnitOfWork unitOfWork)
+        private readonly UserManager<ApplicationIdentityUser> _userManager;
+        public SalesController(ISalesService salesService, IUnitOfWork unitOfWork, UserManager<ApplicationIdentityUser> userManager)
         {
             _salesService = salesService;
             _unitOfWork = unitOfWork;
+            _userManager = userManager;
         }
         [Authorize(Roles = UserRole.Admin + "," + UserRole.Cashier)]
         [HttpGet("GetSales")]
@@ -39,9 +42,9 @@ namespace POSIMSWebApi.Controllers
                 {
                     Id = e.Id,
                     TotalAmount = e.TotalAmount,
-                    TransactionDate = e.CreationTime.ToString("f"),
+                    TransactionDate = e.CreationTime.AddHours(8).ToString("g"),
                     TransNum = e.TransNum,
-                    SoldBy = "",
+                    SoldBy = e.CreatedBy.ToString(),
                     CustomerName = e.CustomerFk != null ? string.Format("{0} {1}", e.CustomerFk.Firstname, e.CustomerFk.Lastname) : "N/A",
                     SalesDetailsDto = e.SalesDetails.Select(e => new SalesDetailDto
                     {
@@ -53,6 +56,12 @@ namespace POSIMSWebApi.Controllers
                         ProductPrice = e.ProductPrice
                     }).ToList()
                 }).ToListAsync();
+
+            foreach(var item in data)
+            {
+                var creator = await _userManager.FindByIdAsync(item.SoldBy);
+                item.SoldBy = creator?.UserName ?? "";
+            }
 
             var result = new PaginatedResult<SalesHeaderDto>(data, data.Count, (int)input.PageNumber, (int)input.PageSize);
 

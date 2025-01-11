@@ -24,7 +24,7 @@ namespace POSIMSWebApi.Application.Services
                 ProductId = e.Id,
                 ProductName = e.Name,
                 ProductCategories = e.ProductCategories.Select(e => e.Name).ToList()
-            }).AsNoTracking().AsSplitQuery().ToListAsync();
+            }).AsNoTracking().ToListAsync();
 
             if(data.Count <= 0)
             {

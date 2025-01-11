@@ -193,14 +193,13 @@ namespace POSIMSWebApi.Application.Services
 
                 var transJoin = (from t in transDetails
                                  join p in _unitOfWork.Product.GetQueryable()
-                                 on t.ProductId equals p.Id into prodTrans
-                                 from pt in prodTrans.DefaultIfEmpty()
+                                 on t.ProductId equals p.Id
                                  select new CreateProductSales
                                  {
-                                     Id = pt.Id,
+                                     Id = p.Id,
                                      ActualSellingPrice = t.ActualSellingPrice != null ? (decimal)t.ActualSellingPrice : 0,
-                                     Name = pt.Name,
-                                     Price = pt.Price,
+                                     Name = p.Name,
+                                     Price = p.Price,
                                      Quantity = t.Quantity,
                                  }).ToList();
 

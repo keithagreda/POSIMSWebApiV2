@@ -15,9 +15,6 @@ namespace POSIMSWebApi.Application.Services
         {
             _unitOfWork = unitOfWork;
         }
-
-       
-
         public async Task<ApiResponse<List<CurrentInventoryDto>>> GetCurrentStocks()
         {
 

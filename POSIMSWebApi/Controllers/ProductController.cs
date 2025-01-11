@@ -175,18 +175,17 @@ namespace POSIMSWebApi.Controllers
                 Name = e.Name
             }).ToListAsync();
 
-            var leftJoin =  (from n in inputListOfProducts
-                                  join p in productDetails
-                                  on n.ProductId equals p.ProductId
-                                  into pGroup from p in pGroup.DefaultIfEmpty() 
-                                  select new CreateSalesDetailV1Dto
-                                  {
-                                      
-                                      ProductId = p.ProductId,
-                                      Quantity = n.Quantity,
-                                      ProductPrice = p.ProductPrice * n.Quantity,
-                                      ProductName = p.Name
-                                  }).ToList();
+
+            var leftJoin = (from n in inputListOfProducts
+                            join p in productDetails
+                            on n.ProductId equals p.ProductId
+                            select new CreateSalesDetailV1Dto
+                            {
+                                ProductId = p.ProductId, // Use n.ProductId when p is null
+                                Quantity = n.Quantity,
+                                ProductPrice = (p != null ? p.ProductPrice : 0) * n.Quantity, // Handle null pGroup
+                                ProductName = p != null ? p.Name : "Unknown Product" // Provide default name
+                            }).ToList();
 
 
             return Ok(ApiResponse<List<CreateSalesDetailV1Dto>>.Success(leftJoin));

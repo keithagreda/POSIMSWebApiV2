@@ -7,11 +7,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "POSIMSWebApi", "POSIMSWebAp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Domain", "..\Domain\Domain.csproj", "{B4FD1406-9717-43DD-9226-988C138DE1A8}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DataAccess.EFCore", "..\DataAccess.EFCore\DataAccess.EFCore.csproj", "{4D7BC75F-1680-44C5-8C4E-0D0ABC8364BC}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "POSIMSWebApi.Tests", "..\POSIMSWebApi.Tests\POSIMSWebApi.Tests.csproj", "{5F95C6F9-CA0D-499F-8416-17E55C6BDBB1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "POSIMSWebApi.Application", "..\POSIMSWebApi.Application\POSIMSWebApi.Application.csproj", "{EDAA49CE-F7CC-42CF-85FE-7D35B5A05FCD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "POSIMSWebApi.Application", "..\POSIMSWebApi.Application\POSIMSWebApi.Application.csproj", "{EDAA49CE-F7CC-42CF-85FE-7D35B5A05FCD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,10 +25,6 @@ Global
 		{B4FD1406-9717-43DD-9226-988C138DE1A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B4FD1406-9717-43DD-9226-988C138DE1A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B4FD1406-9717-43DD-9226-988C138DE1A8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4D7BC75F-1680-44C5-8C4E-0D0ABC8364BC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4D7BC75F-1680-44C5-8C4E-0D0ABC8364BC}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4D7BC75F-1680-44C5-8C4E-0D0ABC8364BC}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4D7BC75F-1680-44C5-8C4E-0D0ABC8364BC}.Release|Any CPU.Build.0 = Release|Any CPU
 		{5F95C6F9-CA0D-499F-8416-17E55C6BDBB1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{5F95C6F9-CA0D-499F-8416-17E55C6BDBB1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5F95C6F9-CA0D-499F-8416-17E55C6BDBB1}.Release|Any CPU.ActiveCfg = Release|Any CPU
