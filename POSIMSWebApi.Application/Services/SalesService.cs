@@ -217,19 +217,40 @@ namespace POSIMSWebApi.Application.Services
                     TransNum = await GenerateTransNum(),
                     InventoryBeginningId = await _unitOfWork.InventoryBeginning.CreateOrGetInventoryBeginning()
                 };
-
-                if (input.CustomerId is not null)
+                Guid? customerId = null;
+                //create customer
+                if (!string.IsNullOrEmpty(input.CustomerName))
                 {
-                    var customer = await _unitOfWork.Customer.FirstOrDefaultAsync(e => e.Id == input.CustomerId);
-
-                    if (customer is null)
+                    var existingCustomer = await _unitOfWork.Customer.GetQueryable().FirstOrDefaultAsync(e => e.Name.Contains(input.CustomerName));
+                    if (existingCustomer is null)
                     {
-                        var error = new ValidationException("Error! Customer not found.");
-                        return ApiResponse<string>.Fail(error.ToString());
+                        var customer = new Customer
+                        {
+                            Name = input.CustomerName,
+                        };
+                        customerId = await _unitOfWork.Customer.InsertAndGetGuidAsync(customer);
+                    }
+                    //lookup if existing
+                    if(existingCustomer is not null)
+                    {
+                        customerId = existingCustomer.Id;
                     }
 
-                    salesHeader.CustomerId = customer.Id;
+                    salesHeader.CustomerId = customerId;
                 }
+
+                //if (customerId is not null)
+                //{
+                //    var customer = await _unitOfWork.Customer.FirstOrDefaultAsync(e => e.Id == input.CustomerId);
+
+                //    if (customer is null)
+                //    {
+                //        var error = new ValidationException("Error! Customer not found.");
+                //        return ApiResponse<string>.Fail(error.ToString());
+                //    }
+
+                //    salesHeader.CustomerId = customer.Id;
+                //}
 
                 var saleDetails = new List<SalesDetail>();
                 //TO DO FIGURE OUT HOW TO DEDUCT QTY IF STOCKS ARE NOT ENOUGH

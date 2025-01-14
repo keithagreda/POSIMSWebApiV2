@@ -59,6 +59,7 @@ builder.Services.AddScoped<IStockReceivingService, StocksReceivingService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<IStorageLocationService, StorageLocationService>();
 builder.Services.AddScoped<ISalesService, SalesService>();
+builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<SoftDeleteInterceptor>();
 builder.Services.AddScoped<AuditInterceptor>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();

@@ -33,6 +33,7 @@ namespace Domain.Interfaces
         void Add(T entity);
         Task AddAsync(T entity);
         Task<int> InsertAndGetIdAsync(T entity);
+        Task<Guid> InsertAndGetGuidAsync(T entity);
         void AddRange(IEnumerable<T> entities);
 
         Task<string> AddRangeAsync(IEnumerable<T> entities);

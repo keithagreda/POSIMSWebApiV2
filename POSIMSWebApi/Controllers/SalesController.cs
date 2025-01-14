@@ -45,7 +45,7 @@ namespace POSIMSWebApi.Controllers
                     TransactionDate = e.CreationTime.AddHours(8).ToString("g"),
                     TransNum = e.TransNum,
                     SoldBy = e.CreatedBy.ToString(),
-                    CustomerName = e.CustomerFk != null ? string.Format("{0} {1}", e.CustomerFk.Firstname, e.CustomerFk.Lastname) : "N/A",
+                    CustomerName = e.CustomerFk != null ? e.CustomerFk.Name : "N/A",
                     SalesDetailsDto = e.SalesDetails.Select(e => new SalesDetailDto
                     {
                         ActualSellingPrice = e.ActualSellingPrice,
