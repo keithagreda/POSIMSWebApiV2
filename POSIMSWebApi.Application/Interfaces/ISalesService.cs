@@ -1,5 +1,6 @@
 ﻿using Domain.ApiResponse;
 using LanguageExt.Common;
+using POSIMSWebApi.Application.Dtos.Pagination;
 using POSIMSWebApi.Application.Dtos.ProductDtos;
 using POSIMSWebApi.Application.Dtos.Sales;
 
@@ -11,6 +12,7 @@ namespace POSIMSWebApi.Application.Interfaces
         Task<ApiResponse<string>> CreateSales(CreateOrEditSalesV1Dto input);
         Task<ApiResponse<GetTotalSalesDto>> GetTotalSales();
         Task<ApiResponse<List<PerMonthSalesDto>>> GetPerMonthSales(int? year);
+        Task<ApiResponse<PaginatedResult<ViewSalesHeaderDto>>> ViewSales(GenericSearchParams input);
 
     }
 }

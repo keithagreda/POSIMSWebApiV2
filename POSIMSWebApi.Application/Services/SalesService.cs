@@ -4,10 +4,12 @@ using Domain.Error;
 using Domain.Interfaces;
 using LanguageExt.Common;
 using Microsoft.EntityFrameworkCore;
+using POSIMSWebApi.Application.Dtos.Pagination;
 using POSIMSWebApi.Application.Dtos.ProductDtos;
 using POSIMSWebApi.Application.Dtos.Sales;
 using POSIMSWebApi.Application.Dtos.Stocks;
 using POSIMSWebApi.Application.Interfaces;
+using POSIMSWebApi.QueryExtensions;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -443,6 +445,41 @@ namespace POSIMSWebApi.Application.Services
 
 
             return ApiResponse<GetTotalSalesDto>.Success(result);
+        }
+
+        public async Task<ApiResponse<PaginatedResult<ViewSalesHeaderDto>>> ViewSales(GenericSearchParams input)
+        {
+            try
+            {
+                var query = _unitOfWork.SalesHeader.GetQueryable().Include(e => e.SalesDetails).ThenInclude(e => e.ProductFk);
+                //.WhereIf(!string.IsNullOrWhiteSpace(input.FilterText), e => e.TransNum.Contains(input.FilterText));
+                var projection = await query
+                    .Select(e => new ViewSalesHeaderDto
+                    {
+                        TransNum = e.TransNum,
+                        TransDate = e.CreationTime,
+                        TotalAmount = e.TotalAmount,
+                        //TODO:
+                        Discount = 0,
+                        ViewSalesDetailDtos = e.SalesDetails.Select(e => new ViewSalesDetailDto
+                        {
+                            Amount = e.ActualSellingPrice != 0 ? e.ActualSellingPrice : e.Amount,
+                            ItemName = e.ProductFk.Name,
+                            Quantity = e.Quantity,
+                            Rate = e.ProductPrice
+                        }).ToList()
+                    })
+                    .ToPaginatedResult(input.PageNumber, input.PageSize)
+                    .OrderByDescending(e => e.TransDate)
+                    .ToListAsync();
+                var res = new PaginatedResult<ViewSalesHeaderDto>(projection, await query.CountAsync(), (int)input.PageNumber, (int)input.PageSize);
+                return ApiResponse<PaginatedResult<ViewSalesHeaderDto>>.Success(res);
+            }
+            catch (Exception ex)
+            {
+
+                return ApiResponse<PaginatedResult<ViewSalesHeaderDto>>.Fail(ex.Message); ;
+            }
         }
 
         public async Task<ApiResponse<List<PerMonthSalesDto>>> GetPerMonthSales(int? year )
