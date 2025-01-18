@@ -114,9 +114,9 @@ namespace POSIMSWebApi.Controllers
         }
         [Authorize(Roles = UserRole.Admin + "," + UserRole.Cashier)]
         [HttpGet("ViewSales")]
-        public async Task<ActionResult<ApiResponse<PaginatedResult<ViewSalesHeaderDto>>>> ViewSales([FromQuery]GenericSearchParams input)
+        public async Task<ActionResult<ApiResponse<PaginatedResult<ViewSalesHeaderDto>>>> ViewSales([FromQuery]ViewSalesParams input)
         {
-            var result = await _salesService.ViewSales(input);
+           var result = await _salesService.ViewSales(input);
             return Ok(result);
         }
     }

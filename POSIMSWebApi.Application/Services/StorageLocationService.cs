@@ -1,4 +1,5 @@
-﻿using Domain.Entities;
+﻿using Domain.ApiResponse;
+using Domain.Entities;
 using Domain.Interfaces;
 using LanguageExt.Common;
 using POSIMSWebApi.Application.Dtos.StorageLocation;
@@ -20,7 +21,7 @@ namespace POSIMSWebApi.Application.Services
             _unitOfWork = unitOfWork;
         }
 
-        private async Task<Result<string>> ValidateStorageLocation(CreateOrEditStorageLocationDto input)
+        private async Task<ApiResponse<string>> ValidateStorageLocation(CreateOrEditStorageLocationDto input)
         {
             var isExisting = new StorageLocation();
 
@@ -32,21 +33,21 @@ namespace POSIMSWebApi.Application.Services
                 if (isExisting != null)
                 {
                     var error = new ValidationException("Error! Location already exists, Param: Name");
-                    return new Result<string>(error);
+                    return ApiResponse<string>.Fail(error.ToString());
                 }
 
-                return "Success!";
+                return ApiResponse<string>.Success("Success!");
             }
             isExisting = await _unitOfWork.StorageLocation.FirstOrDefaultAsync(e => e.Name == input.Name);
             if (isExisting != null)
             {
                 var error = new ValidationException("Error! Location already exists, Param: Name");
-                return new Result<string>(error);
+                return ApiResponse<string>.Fail(error.ToString());
             }
 
-            return "Success!";
+            return ApiResponse<string>.Success("Success!");
         }
-        public async Task<Result<string>> CreateStorageLocation(CreateOrEditStorageLocationDto input)
+        public async Task<ApiResponse<string>> CreateStorageLocation(CreateOrEditStorageLocationDto input)
         {
             try
             {
@@ -63,7 +64,7 @@ namespace POSIMSWebApi.Application.Services
 
                 await _unitOfWork.StorageLocation.AddAsync(newStorageLoc);
                 _unitOfWork.Complete();
-                return "Success!";
+                return ApiResponse<string>.Success("Success!");
             }
             catch (Exception ex)
             {

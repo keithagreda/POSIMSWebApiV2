@@ -447,12 +447,13 @@ namespace POSIMSWebApi.Application.Services
             return ApiResponse<GetTotalSalesDto>.Success(result);
         }
 
-        public async Task<ApiResponse<PaginatedResult<ViewSalesHeaderDto>>> ViewSales(GenericSearchParams input)
+        public async Task<ApiResponse<PaginatedResult<ViewSalesHeaderDto>>> ViewSales(ViewSalesParams  input)
         {
             try
             {
-                var query = _unitOfWork.SalesHeader.GetQueryable().Include(e => e.SalesDetails).ThenInclude(e => e.ProductFk);
-                //.WhereIf(!string.IsNullOrWhiteSpace(input.FilterText), e => e.TransNum.Contains(input.FilterText));
+                var query = _unitOfWork.SalesHeader.GetQueryable().Include(e => e.SalesDetails).ThenInclude(e => e.ProductFk)
+                .WhereIf(input.SalesHeaderId != null, e => e.Id == input.SalesHeaderId)
+                .WhereIf(!string.IsNullOrWhiteSpace(input.FilterText), e => e.TransNum.Contains(input.FilterText));
                 var projection = await query
                     .Select(e => new ViewSalesHeaderDto
                     {

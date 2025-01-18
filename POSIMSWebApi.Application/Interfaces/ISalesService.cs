@@ -12,7 +12,7 @@ namespace POSIMSWebApi.Application.Interfaces
         Task<ApiResponse<string>> CreateSales(CreateOrEditSalesV1Dto input);
         Task<ApiResponse<GetTotalSalesDto>> GetTotalSales();
         Task<ApiResponse<List<PerMonthSalesDto>>> GetPerMonthSales(int? year);
-        Task<ApiResponse<PaginatedResult<ViewSalesHeaderDto>>> ViewSales(GenericSearchParams input);
+        Task<ApiResponse<PaginatedResult<ViewSalesHeaderDto>>> ViewSales(ViewSalesParams input);
 
     }
 }

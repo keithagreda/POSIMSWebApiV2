@@ -25,14 +25,12 @@ namespace POSIMSWebApi.Controllers
         }
         [Authorize(Roles = UserRole.Admin + "," + UserRole.Inventory + "," + UserRole.Cashier)]
         [HttpPost("CreateStorageLocation")]
-        public async Task<IActionResult> CreateStorageLocation([FromBody]CreateOrEditStorageLocationDto input)
+        public async Task<ActionResult<ApiResponse<string>>> CreateStorageLocation([FromBody]CreateOrEditStorageLocationDto input)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
             var result = await _storageLocationService.CreateStorageLocation(input);
-            return result.Match<IActionResult>(
-                success => CreatedAtAction(nameof(CreateStorageLocation), new { id = input.Id }, success),
-                error => BadRequest(error));
+            return Ok(result);
         }
         [Authorize(Roles = UserRole.Admin + "," + UserRole.Inventory + "," + UserRole.Cashier)]
         [HttpGet("GetAllStorageLocation")]
@@ -48,5 +46,6 @@ namespace POSIMSWebApi.Controllers
 
             return Ok(ApiResponse<List<GetStorageLocationForDropDownDto>>.Success(result));
         }
+
     }
 }

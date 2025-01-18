@@ -59,15 +59,13 @@ namespace POSIMSWebApi.Controllers
         {
             try
             {
-
                 var productCategory = new ProductCategory
                 {
                     Name = input.Name,
-                    CreationTime = DateTimeOffset.Now,
                 };
                 await _unitOfWork.ProductCategory.AddAsync(productCategory);
                 _unitOfWork.Complete();
-                return Ok();
+                return Ok(ApiResponse<string>.Success("Success!"));
             }
             catch (Exception ex)
             {
