@@ -261,19 +261,20 @@ namespace POSIMSWebApi.Application.Services
                     //to deduct items from stocks
                     //since its first in first out 
                     //to create stock details
-
                     var currAmount = CalculateAmount(transJoin, item.Id, item.Quantity);
+
                     var saleDetail = new SalesDetail
                     {
                         Id = Guid.NewGuid(),
-                        ActualSellingPrice = item.ActualSellingPrice != 0 ? item.ActualSellingPrice : 0, //
+                        ActualSellingPrice = item.ActualSellingPrice != 0 ? item.ActualSellingPrice : 0m, //
                         Amount = currAmount,
                         Quantity = item.Quantity,
                         ProductPrice = item.Price,
                         ProductId = item.Id,
-                        Discount = item.ActualSellingPrice != 0 ? (currAmount - item.ActualSellingPrice) / currAmount * 100 : 0, // 
+                        Discount = item.ActualSellingPrice != 0 ? (currAmount - item.ActualSellingPrice) / currAmount * 100 : 0m, // 
                         SalesHeaderId = salesHeader.Id
                     };
+
                     salesHeader.TotalAmount = salesHeader.TotalAmount += currAmount;
                     saleDetails.Add(saleDetail);
                 }
@@ -447,7 +448,7 @@ namespace POSIMSWebApi.Application.Services
             return ApiResponse<GetTotalSalesDto>.Success(result);
         }
 
-        public async Task<ApiResponse<PaginatedResult<ViewSalesHeaderDto>>> ViewSales(ViewSalesParams  input)
+        public async Task<ApiResponse<PaginatedResult<ViewSalesHeaderDto>>> ViewSales(ViewSalesParams input)
         {
             try
             {
@@ -461,7 +462,7 @@ namespace POSIMSWebApi.Application.Services
                         TransDate = e.CreationTime,
                         TotalAmount = e.TotalAmount,
                         //TODO:
-                        Discount = 0,
+                        Discount = 0m,
                         ViewSalesDetailDtos = e.SalesDetails.Select(e => new ViewSalesDetailDto
                         {
                             Amount = e.ActualSellingPrice != 0 ? e.ActualSellingPrice : e.Amount,
@@ -473,6 +474,28 @@ namespace POSIMSWebApi.Application.Services
                     .ToPaginatedResult(input.PageNumber, input.PageSize)
                     .OrderByDescending(e => e.TransDate)
                     .ToListAsync();
+
+                projection.ForEach((header) =>
+                {
+                    var finalTotalSales = 0m;
+                    header.ViewSalesDetailDtos.ForEach((item) =>
+                    {
+                        finalTotalSales += item.Amount;
+                    });
+
+                    if(finalTotalSales == header.TotalAmount)
+                    {
+                        header.FinalTotalAmount = header.TotalAmount;
+                        header.Discount = 0m;
+                    }
+                    else
+                    {
+                        header.FinalTotalAmount = finalTotalSales;
+                        header.Discount = Math.Round( (header.TotalAmount - finalTotalSales) / header.TotalAmount * 100, 2, MidpointRounding.AwayFromZero);
+                    }
+
+                    
+                });
                 var res = new PaginatedResult<ViewSalesHeaderDto>(projection, await query.CountAsync(), (int)input.PageNumber, (int)input.PageSize);
                 return ApiResponse<PaginatedResult<ViewSalesHeaderDto>>.Success(res);
             }

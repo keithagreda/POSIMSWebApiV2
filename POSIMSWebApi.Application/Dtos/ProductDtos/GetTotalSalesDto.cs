@@ -20,7 +20,8 @@
         public string TransNum { get; set; }
         public DateTimeOffset TransDate { get; set; }
         public decimal TotalAmount { get; set; }
-        public int Discount { get; set; }
+        public decimal FinalTotalAmount { get; set; }
+        public decimal Discount { get; set; }
         public List<ViewSalesDetailDto> ViewSalesDetailDtos { get; set; } = new List<ViewSalesDetailDto>();
 
     }
