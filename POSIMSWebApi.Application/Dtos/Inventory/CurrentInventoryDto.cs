@@ -15,10 +15,26 @@ namespace POSIMSWebApi.Application.Dtos.Inventory
         public decimal CurrentStocks { get; set; }
     }
 
+    public class CurrentInventoryV1Dto
+    {
+        public int ProductId { get; set; }
+        public decimal ReceivedQty { get; set; }
+        public decimal SalesQty { get; set; }
+        public decimal BegQty { get; set; }
+        public decimal CurrentStocks { get; set; }
+    }
+
     public class CreateBeginningEntryDto
     {
         public int ProductId { get; set; }
         //public string ProductName { get; set;}
         public decimal ReceivedQty { get; set;}
+    }
+
+    public class ProductQuantityDto
+    {
+        public string? ProductName { get; set; }
+        public int ProductId { get; set; }
+        public decimal TotalQuantity { get; set; }
     }
 }

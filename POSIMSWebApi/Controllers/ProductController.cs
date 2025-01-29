@@ -25,10 +25,12 @@ namespace POSIMSWebApi.Controllers
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IProductService _productService;
-        public ProductController(IUnitOfWork unitOfWork, IProductService productService)
+        private readonly IInventoryService _inventoryService;
+        public ProductController(IUnitOfWork unitOfWork, IProductService productService, IInventoryService inventoryService)
         {
             _unitOfWork = unitOfWork;
             _productService = productService;
+            _inventoryService = inventoryService;
         }
 
         [Authorize(Roles = UserRole.Admin + "," + UserRole.Inventory + "," + UserRole.Cashier)]
@@ -148,12 +150,11 @@ namespace POSIMSWebApi.Controllers
                 .WhereIf(!string.IsNullOrWhiteSpace(input.FilterText), e => false || e.Name.Contains(input.FilterText))
                 .ToPaginatedResult(input.PageNumber, input.PageSize)
                 .OrderBy(e => e.Name).Select(e => new GetProductDropDownTableDto
-            {
-                Id = e.Id,
-                Name = e.Name,
-                Price = e.Price
-
-            }).ToListAsync();
+                {
+                    Id = e.Id,
+                    Name = e.Name,
+                    Price = e.Price
+                }).ToListAsync();
 
             var totalCount = await query.CountAsync();
 
@@ -162,6 +163,53 @@ namespace POSIMSWebApi.Controllers
 
             return Ok(ApiResponse<PaginatedResult<GetProductDropDownTableDto>>.Success(result));
         }
+
+        //[Authorize(Roles = UserRole.Admin + "," + UserRole.Inventory + "," + UserRole.Cashier)]
+        [HttpGet("GetProductsForDropDownV1")]
+        public async Task<ActionResult<ApiResponse<PaginatedResult<GetProductDropDownTableV1Dto>>>> GetProductDropDownTableV1([FromQuery] GenericSearchParams? input)
+        {
+            try
+            {
+                var query = _unitOfWork.Product.GetQueryable();
+                var product = await query
+                    .WhereIf(!string.IsNullOrWhiteSpace(input.FilterText), e => false || e.Name.Contains(input.FilterText))
+                    .ToPaginatedResult(input.PageNumber, input.PageSize)
+                    .Select(e => new GetProductDropDownTableV1Dto
+                    {
+                        Id = e.Id,
+                        Name = e.Name,
+                        Price = e.Price
+                    })
+                    .ToListAsync(); // Ensure it's executed in memory
+
+                var getStocks = await _inventoryService.GetCurrentStocksV1();
+                var stocks = getStocks.Data;
+
+                var productStocks =  (from p in product
+                                           join s in stocks on p.Id equals s.ProductId
+                                           orderby p.Name
+                                           select new GetProductDropDownTableV1Dto
+                                           {
+                                               Id = s.ProductId,
+                                               Name = p.Name,
+                                               Price = p.Price,
+                                               CurrentStock = s.CurrentStocks
+                                           }).ToList();
+
+                var totalCount = await query.CountAsync();
+
+                var result = new PaginatedResult<GetProductDropDownTableV1Dto>(productStocks, totalCount, (int)input.PageNumber, (int)input.PageSize);
+
+
+                return Ok(ApiResponse<PaginatedResult<GetProductDropDownTableV1Dto>>.Success(result));
+            }
+            catch (Exception ex)
+            {
+
+                throw ex;
+            }
+        }
+
         [Authorize(Roles = UserRole.Admin + "," + UserRole.Inventory + "," + UserRole.Cashier)]
         [HttpPost("GetProductDetailsForCart")]
         public async Task<ActionResult<ApiResponse<List<CreateSalesDetailV1Dto>>>> GetProductDetailsForCart(List<CreateSalesDetailV1Dto> input)

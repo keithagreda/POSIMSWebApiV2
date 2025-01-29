@@ -7,5 +7,6 @@ namespace POSIMSWebApi.Application.Interfaces
     {
         Task<ApiResponse<List<CurrentInventoryDto>>> GetCurrentStocks();
         Task<string> BeginningEntry(CreateBeginningEntryDto input);
+        Task<ApiResponse<List<CurrentInventoryV1Dto>>> GetCurrentStocksV1();
     }
 }

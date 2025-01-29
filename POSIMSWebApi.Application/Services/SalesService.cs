@@ -396,6 +396,15 @@ namespace POSIMSWebApi.Application.Services
             return disPercentage;
         }
 
+        private decimal SalesHelper(decimal productPrice, decimal quantity, decimal? actualSellingPrice)
+        {
+            if (actualSellingPrice != 0)
+            {
+                return (decimal)actualSellingPrice;
+            }
+            return productPrice * quantity;
+        } 
+
         public async Task<ApiResponse<GetTotalSalesDto>> GetTotalSales()
         {
 
@@ -405,8 +414,16 @@ namespace POSIMSWebApi.Application.Services
             var prevInv = await previousInventories.FirstOrDefaultAsync() ?? new InventoryBeginning();
 
             var sales = _unitOfWork.SalesDetail.GetQueryable().Include(e => e.SalesHeaderFk.InventoryBeginningFk);
-            var currentSales = sales.Where(e => e.SalesHeaderFk.InventoryBeginningId == getCurrentInv.Id).Sum(e => (e.ProductPrice * e.Quantity) + e.ActualSellingPrice);
-            var prevInvSales = sales.Where(e => e.SalesHeaderFk.InventoryBeginningId == prevInv.Id).Sum(e => (e.ProductPrice * e.Quantity) + e.ActualSellingPrice);
+            var currentSales = 0m;
+            await sales.Where(e => e.SalesHeaderFk.InventoryBeginningId == getCurrentInv.Id).ForEachAsync((i) =>
+            {
+                currentSales += SalesHelper(i.ProductPrice, i.Quantity, i.ActualSellingPrice);
+            });
+            var prevInvSales = 0m;
+            await sales.Where(e => e.SalesHeaderFk.InventoryBeginningId == prevInv.Id).ForEachAsync((p) =>
+            {
+                prevInvSales += SalesHelper(p.ProductPrice, p.Quantity, p.ActualSellingPrice);
+            });
 
             // Fetch previous sales in memory
             var prevSales = await sales
