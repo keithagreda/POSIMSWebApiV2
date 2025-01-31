@@ -61,5 +61,17 @@ namespace POSIMSWebApi.Controllers
             }
             return Ok(data);
         }
+
+        [HttpGet("GetCurrentStocksByProduct/{id}")]
+        public async Task<ActionResult<ApiResponse<CurrentInventoryV1Dto>>> GetCurrentStocksByProduct(int id)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            var productCurrentInventory = await _inventoryService.GetCurrentStocksByProduct(id);
+            if(!productCurrentInventory.IsSuccess)
+            {
+                return BadRequest(productCurrentInventory);
+            }
+            return Ok(productCurrentInventory);
+        }
     }
 }

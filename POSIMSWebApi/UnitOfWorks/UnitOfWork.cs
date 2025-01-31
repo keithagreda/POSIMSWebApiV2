@@ -28,6 +28,7 @@ namespace POSIMSWebApi.UnitOfWorks
             Customer = new CustomerRepository(_context);
             StorageLocation = new StorageLocationRepository(_context);
             Remarks = new RemarksRepository(_context);
+            ProductStocks = new ProductStocksRepository(_context);
             EntityHistory = new EntityHistoryRepository(_context);
         }
         public ISalesHeaderRepository SalesHeader { get; private set; }
@@ -42,6 +43,7 @@ namespace POSIMSWebApi.UnitOfWorks
         public ICustomerRepository Customer { get; private set; }
         public IStorageLocationRepository StorageLocation { get; private set; }
         public IRemarksRepository Remarks { get; private set; }
+        public IProductStocksRepository ProductStocks { get; private set; }
         public IEntityHistoryRepository EntityHistory { get; private set; }
         public int Complete()
         {

@@ -20,6 +20,7 @@ namespace Domain.Interfaces
         ICustomerRepository Customer { get; }
         IStorageLocationRepository StorageLocation { get; }
         IRemarksRepository Remarks { get; }
+        IProductStocksRepository ProductStocks { get; }
         IEntityHistoryRepository EntityHistory { get; }
         int Complete();
         Task<int> CompleteAsync();

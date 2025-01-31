@@ -135,6 +135,7 @@ namespace POSIMSWebApi
         public DbSet<StocksDetail> StocksDetails { get; set; }
         public DbSet<InventoryBeginning> InventoryBeginnings { get; set; }
         public DbSet<InventoryBeginningDetails> InventoryBeginningDetails { get; set; }
+        public DbSet<ProductStocks> ProductStocks { get; set; }
         public DbSet <EntityHistory> EntityHistories { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

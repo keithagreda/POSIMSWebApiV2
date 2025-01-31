@@ -60,6 +60,7 @@ builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<IStorageLocationService, StorageLocationService>();
 builder.Services.AddScoped<ISalesService, SalesService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddScoped<SoftDeleteInterceptor>();
 builder.Services.AddScoped<AuditInterceptor>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -90,7 +91,6 @@ builder.Services.AddAuthentication(option =>
     option.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
     option.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
 })
-
 .AddJwtBearer(o =>
 {
     o.SaveToken = false;
@@ -121,6 +121,7 @@ builder.Services.AddAuthentication(option =>
 //    policy.RequireRole("Admin", ""));
 //});
 builder.Services.AddHealthChecks();
+builder.Services.AddMemoryCache();
 
 var app = builder.Build();
 

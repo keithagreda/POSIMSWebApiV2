@@ -4,6 +4,9 @@ using Domain.Error;
 using Domain.Interfaces;
 using LanguageExt.Common;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Primitives;
+using POSIMSWebApi.Application.Dtos.Inventory;
 using POSIMSWebApi.Application.Dtos.Pagination;
 using POSIMSWebApi.Application.Dtos.ProductDtos;
 using POSIMSWebApi.Application.Dtos.Sales;
@@ -25,9 +28,19 @@ namespace POSIMSWebApi.Application.Services
     public class SalesService : ISalesService
     {
         private readonly IUnitOfWork _unitOfWork;
-        public SalesService(IUnitOfWork unitOfWork)
+        private readonly ICacheService _cacheService;
+        private readonly IInventoryService _inventoryService;
+        private readonly IMemoryCache _memoryCache;
+        private static readonly SemaphoreSlim sempahore = new SemaphoreSlim(1, 1);
+        private readonly string _totalSalesKey = "TotalSales";
+        private readonly string _salesGraphKey = "SalesGraph";
+
+        public SalesService(IUnitOfWork unitOfWork, ICacheService cacheService, IInventoryService inventoryService, IMemoryCache memoryCache)
         {
             _unitOfWork = unitOfWork;
+            _cacheService = cacheService;
+            _inventoryService = inventoryService;
+            _memoryCache = memoryCache;
         }
 
         /// <summary>
@@ -150,6 +163,7 @@ namespace POSIMSWebApi.Application.Services
                 await _unitOfWork.SalesHeader.AddAsync(salesHeader);
                 await _unitOfWork.SalesDetail.AddRangeAsync(saleDetails);
                 _unitOfWork.Complete();
+
 
                 return ApiResponse<string>.Success("Success!");
             }
@@ -284,7 +298,9 @@ namespace POSIMSWebApi.Application.Services
                 await _unitOfWork.SalesHeader.AddAsync(salesHeader);
                 await _unitOfWork.SalesDetail.AddRangeAsync(saleDetails);
                 _unitOfWork.Complete();
-
+                _cacheService.RemoveInventoryCache();
+                _memoryCache.Remove(_totalSalesKey);
+                _memoryCache.Remove(_salesGraphKey);
                 return ApiResponse<string>.Success("Success!");
             }
             catch (Exception ex)
@@ -407,61 +423,78 @@ namespace POSIMSWebApi.Application.Services
 
         public async Task<ApiResponse<GetTotalSalesDto>> GetTotalSales()
         {
-
-            var inventory = _unitOfWork.InventoryBeginning.GetQueryable();
-            var getCurrentInv = await inventory.FirstOrDefaultAsync(e => e.Status == Domain.Enums.InventoryStatus.Open) ?? new InventoryBeginning();
-            var previousInventories = inventory.Where(e => e.Status == Domain.Enums.InventoryStatus.Closed).OrderByDescending(e => e.CreationTime);
-            var prevInv = await previousInventories.FirstOrDefaultAsync() ?? new InventoryBeginning();
-
-            var sales = _unitOfWork.SalesDetail.GetQueryable().Include(e => e.SalesHeaderFk.InventoryBeginningFk);
-            var currentSales = 0m;
-            await sales.Where(e => e.SalesHeaderFk.InventoryBeginningId == getCurrentInv.Id).ForEachAsync((i) =>
+            if (!_memoryCache.TryGetValue(_totalSalesKey, out GetTotalSalesDto? result))
             {
-                currentSales += SalesHelper(i.ProductPrice, i.Quantity, i.ActualSellingPrice);
-            });
-            var prevInvSales = 0m;
-            await sales.Where(e => e.SalesHeaderFk.InventoryBeginningId == prevInv.Id).ForEachAsync((p) =>
-            {
-                prevInvSales += SalesHelper(p.ProductPrice, p.Quantity, p.ActualSellingPrice);
-            });
-
-            // Fetch previous sales in memory
-            var prevSales = await sales
-                .OrderByDescending(e => e.SalesHeaderFk.InventoryBeginningFk.CreationTime)
-                .Take(5)
-                .GroupBy(e => e.SalesHeaderFk.InventoryBeginningId)
-                .Select(g => g.Sum(e => e.ActualSellingPrice != 0 ? e.ActualSellingPrice : e.Amount)) 
-                .ToListAsync(); 
-
-
-            // Use Zip on the in-memory result
-            var perInv = prevSales
-                .Zip(prevSales.Skip(1), (prev, curr) => new
+                try
                 {
-                    PrevSales = prev,
-                    CurrSales = curr,
-                    SalesPercentage = prev == 0 ? 0 : Convert.ToInt32(((curr - prev) / prev) * 100)
-                }).ToList();
+                    await sempahore.WaitAsync();
+                    if (!_memoryCache.TryGetValue(_totalSalesKey, out result))
+                    {
+                        var inventory = _unitOfWork.InventoryBeginning.GetQueryable();
+                        var getCurrentInv = await inventory.FirstOrDefaultAsync(e => e.Status == Domain.Enums.InventoryStatus.Open) ?? new InventoryBeginning();
+                        var previousInventories = inventory.Where(e => e.Status == Domain.Enums.InventoryStatus.Closed).OrderByDescending(e => e.CreationTime);
+                        var prevInv = await previousInventories.FirstOrDefaultAsync() ?? new InventoryBeginning();
 
-            if (currentSales <= 0)
-            {
-                return ApiResponse<GetTotalSalesDto>.Success(new GetTotalSalesDto
+                        var sales = _unitOfWork.SalesDetail.GetQueryable().Include(e => e.SalesHeaderFk.InventoryBeginningFk);
+                        var currentSales = 0m;
+                        await sales.Where(e => e.SalesHeaderFk.InventoryBeginningId == getCurrentInv.Id).ForEachAsync((i) =>
+                        {
+                            currentSales += SalesHelper(i.ProductPrice, i.Quantity, i.ActualSellingPrice);
+                        });
+                        var prevInvSales = 0m;
+                        await sales.Where(e => e.SalesHeaderFk.InventoryBeginningId == prevInv.Id).ForEachAsync((p) =>
+                        {
+                            prevInvSales += SalesHelper(p.ProductPrice, p.Quantity, p.ActualSellingPrice);
+                        });
+
+                        // Fetch previous sales in memory
+                        var prevSales = await sales
+                            .OrderByDescending(e => e.SalesHeaderFk.InventoryBeginningFk.CreationTime)
+                            .Take(5)
+                            .GroupBy(e => e.SalesHeaderFk.InventoryBeginningId)
+                            .Select(g => g.Sum(e => e.ActualSellingPrice != 0 ? e.ActualSellingPrice : e.Amount))
+                            .ToListAsync();
+
+
+                        // Use Zip on the in-memory result
+                        var perInv = prevSales
+                            .Zip(prevSales.Skip(1), (prev, curr) => new
+                            {
+                                PrevSales = prev,
+                                CurrSales = curr,
+                                SalesPercentage = prev == 0 ? 0 : Convert.ToInt32(((curr - prev) / prev) * 100)
+                            }).ToList();
+
+                        if (currentSales <= 0)
+                        {
+                            return ApiResponse<GetTotalSalesDto>.Success(new GetTotalSalesDto
+                            {
+                                SalesPercentage = 0,
+                                TotalSales = 0
+                            });
+                        };
+
+                        var percentage = prevInvSales > 0 ? Convert.ToInt32((currentSales - prevInvSales) / prevInvSales * 100) : 0;
+
+                        result = new GetTotalSalesDto
+                        {
+                            TotalSales = Convert.ToInt32(currentSales),
+                            SalesPercentage = percentage,
+                            AllSalesPercentage = perInv.Select(e => e.SalesPercentage).ToArray()
+                        };
+
+                        var cacheOptions = new MemoryCacheEntryOptions()
+                               .SetSlidingExpiration(TimeSpan.FromMinutes(30))
+                               .SetSize(1);
+
+                        _memoryCache.Set(_totalSalesKey, result, cacheOptions);
+                    }
+                }
+                finally
                 {
-                    SalesPercentage = 0,
-                    TotalSales = 0
-                });
-            };
-
-            var percentage = prevInvSales > 0 ? Convert.ToInt32((currentSales - prevInvSales) / prevInvSales * 100) : 0;
-
-            var result = new GetTotalSalesDto
-            {
-                TotalSales = Convert.ToInt32(currentSales),
-                SalesPercentage = percentage,
-                AllSalesPercentage = perInv.Select(e => e.SalesPercentage).ToArray()
-            };
-
-
+                    sempahore.Release();
+                }
+            }
             return ApiResponse<GetTotalSalesDto>.Success(result);
         }
 
@@ -525,47 +558,69 @@ namespace POSIMSWebApi.Application.Services
 
         public async Task<ApiResponse<List<PerMonthSalesDto>>> GetPerMonthSales(int? year )
         {
-            if (year is null)
+            if (!_memoryCache.TryGetValue(_totalSalesKey, out List<PerMonthSalesDto> res))
             {
-                year = DateTime.Now.Year;
+                try
+                {
+                    await sempahore.WaitAsync();
+                    if (!_memoryCache.TryGetValue(_totalSalesKey, out res))
+                    {
+                        if (year is null)
+                        {
+                            year = DateTime.Now.Year;
+                        }
+
+                        // Create a list of all months for the specified year
+                        var allMonths = Enumerable.Range(1, 12)
+                            .Select(month => new { Year = year.Value, Month = month })
+                            .ToList(); // Materialize as List for iteration
+
+                        // Fetch the sales queryable
+                        var sales = _unitOfWork.SalesDetail.GetQueryable().Include(e => e.SalesHeaderFk);
+
+                        // Precompute the total sales for the year
+                        var totalSales = await sales
+                            .Where(sale => sale.CreationTime.Year == year)
+                            .SumAsync(sale => sale.ActualSellingPrice != 0 ? sale.ActualSellingPrice : sale.Amount); // Use SumAsync for EF Core async operations
+
+                        // Join all months with sales data
+                        res = allMonths
+                            .Select(month => new
+                            {
+                                month.Year,
+                                month.Month,
+                                MonthlyTotal = sales
+                                    .Where(sale => sale.CreationTime.Year == month.Year && sale.CreationTime.Month == month.Month)
+                                    .Sum(sale => sale.ActualSellingPrice != 0 ? sale.ActualSellingPrice : sale.Amount), // Aggregate monthly totals
+                                TotalSales = totalSales,
+                            })
+                            .OrderBy(e => e.Month)
+                            .Select(result => new PerMonthSalesDto
+                            {
+                                Month = new DateTime(1, result.Month, 1).ToString("MMMM"),
+                                Year = result.Year.ToString(),
+                                SalesPercentage = result.TotalSales == 0
+                                    ? 0
+                                    : (result.MonthlyTotal / result.TotalSales) * 100,
+                                TotalMonthlySales = result.MonthlyTotal
+                            })
+                            .ToList(); // Finalize as a List
+
+                        var cacheOptions = new MemoryCacheEntryOptions()
+                            .SetSlidingExpiration(TimeSpan.FromMinutes(30))
+                            .SetSize(1);
+
+                        _memoryCache.Set(_salesGraphKey, res, cacheOptions);
+                    }
+                }
+                finally
+                {
+                    sempahore.Release();
+                }
             }
 
-            // Create a list of all months for the specified year
-            var allMonths = Enumerable.Range(1, 12)
-                .Select(month => new { Year = year.Value, Month = month })
-                .ToList(); // Materialize as List for iteration
 
-            // Fetch the sales queryable
-            var sales = _unitOfWork.SalesDetail.GetQueryable().Include(e => e.SalesHeaderFk);
-
-            // Precompute the total sales for the year
-            var totalSales = await sales
-                .Where(sale => sale.CreationTime.Year == year)
-                .SumAsync(sale => sale.ActualSellingPrice != 0 ? sale.ActualSellingPrice : sale.Amount); // Use SumAsync for EF Core async operations
-
-            // Join all months with sales data
-            var monthlySalesPercentage = allMonths
-                .Select(month => new
-                {
-                    month.Year,
-                    month.Month,
-                    MonthlyTotal = sales
-                        .Where(sale => sale.CreationTime.Year == month.Year && sale.CreationTime.Month == month.Month)
-                        .Sum(sale => sale.ActualSellingPrice != 0 ? sale.ActualSellingPrice : sale.Amount), // Aggregate monthly totals
-                    TotalSales = totalSales,
-                })
-                .OrderBy(e => e.Month)
-                .Select(result => new PerMonthSalesDto
-                {
-                    Month = new DateTime(1, result.Month, 1).ToString("MMMM"),
-                    Year = result.Year.ToString(),
-                    SalesPercentage = result.TotalSales == 0
-                        ? 0
-                        : (result.MonthlyTotal / result.TotalSales) * 100,
-                    TotalMonthlySales = result.MonthlyTotal
-                })
-                .ToList(); // Finalize as a List
-            return ApiResponse<List<PerMonthSalesDto>>.Success(monthlySalesPercentage);
+            return ApiResponse<List<PerMonthSalesDto>>.Success(res);
         }
     }
 }
