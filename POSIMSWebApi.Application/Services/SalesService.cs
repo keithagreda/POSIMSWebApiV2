@@ -231,7 +231,7 @@ namespace POSIMSWebApi.Application.Services
                     Id = Guid.NewGuid(),
                     TotalAmount = 0,
                     TransNum = await GenerateTransNum(),
-                    InventoryBeginningId = await _unitOfWork.InventoryBeginning.CreateOrGetInventoryBeginning()
+                    InventoryBeginningId = await _inventoryService.CreateOrGetInventoryBeginning()
                 };
                 Guid? customerId = null;
                 //create customer
@@ -618,8 +618,6 @@ namespace POSIMSWebApi.Application.Services
                     sempahore.Release();
                 }
             }
-
-
             return ApiResponse<List<PerMonthSalesDto>>.Success(res);
         }
     }

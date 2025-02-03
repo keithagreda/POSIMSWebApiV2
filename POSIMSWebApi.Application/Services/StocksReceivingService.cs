@@ -4,6 +4,7 @@ using Domain.Error;
 using Domain.Interfaces;
 using LanguageExt.Common;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using POSIMSWebApi.Application.Dtos.Inventory;
 using POSIMSWebApi.Application.Dtos.Stocks;
 using POSIMSWebApi.Application.Dtos.StocksReceiving;
@@ -20,20 +21,25 @@ namespace POSIMSWebApi.Application.Services
     public class StocksReceivingService : IStockReceivingService
     {
         private readonly IUnitOfWork _unitOfWork;
-        private readonly IStockDetailService _stockDetailService;
         private readonly IInventoryService _inventoryService;
+        private readonly IStockDetailService _stockDetailService;
+        private readonly IMemoryCache _memoryCache;
+        private readonly string _cacheKey = "Inventory";
+        private readonly string _allInventory = "AllInventory";
         public StocksReceivingService(IUnitOfWork unitOfWork,
             IStockDetailService stockDetailService,
-            IInventoryService inventoryService)
+            IInventoryService inventoryService,
+            IMemoryCache memoryCache)
         {
             _unitOfWork = unitOfWork;
             _stockDetailService = stockDetailService;
             _inventoryService = inventoryService;
+            _memoryCache = memoryCache;
         }
 
         public async Task<ApiResponse<string>> ReceiveStocks(CreateStocksReceivingDto input)
         {
-            var currentlyOpenedInv = await _unitOfWork.InventoryBeginning.CreateOrGetInventoryBeginning();
+            var currentlyOpenedInv = await _inventoryService.CreateOrGetInventoryBeginning();
             //check if inventory has beginning stocks
             var getCurrentOpenedInventory = _unitOfWork.InventoryBeginningDetails.GetQueryable().Include(e => e.InventoryBeginningFk)
                 .Where(e => e.InventoryBeginningFk.Status == Domain.Enums.InventoryStatus.Open && e.ProductId == input.ProductId);
@@ -79,6 +85,9 @@ namespace POSIMSWebApi.Application.Services
 
             // Step 6: Save to the database
             await _unitOfWork.StocksReceiving.AddAsync(stocksReceiving);
+            _unitOfWork.Complete();
+            _memoryCache.Remove(_cacheKey);
+            _memoryCache.Remove(_allInventory);
             return ApiResponse<string>.Success("", "Successfully received stocks!");
 
             // Handle potential error in stocksHeaderIdResult

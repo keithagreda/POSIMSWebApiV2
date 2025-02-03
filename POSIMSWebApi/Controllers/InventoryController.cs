@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using POSIMSWebApi.Application.Dtos.Inventory;
+using POSIMSWebApi.Application.Dtos.Pagination;
 using POSIMSWebApi.Application.Interfaces;
 using POSIMSWebApi.Authentication;
 
@@ -38,6 +39,23 @@ namespace POSIMSWebApi.Controllers
             }
         }
 
+        //[Authorize(Roles = UserRole.Admin + "," + UserRole.Inventory)]
+        [HttpGet("GetAllInventory")]
+        public async Task<ActionResult<ApiResponse<PaginatedResult<GetInventoryDto>>>> GetAllInventory([FromQuery]InventoryFilter input)
+        {
+            try
+            {
+
+                var data = await _inventoryService.GetAllInventory(input);
+                return Ok(data);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+
         [HttpPost("BeginningEntry")]
         //[AllowAnonymous]
         [Authorize(Roles = UserRole.Admin + "," + UserRole.Inventory)]
@@ -54,7 +72,7 @@ namespace POSIMSWebApi.Controllers
         [HttpPost("CloseInventory")]
         public async Task<ActionResult<ApiResponse<string>>> CloseInventory()
         {
-            var data = await _unitOfWork.InventoryBeginning.CloseInventory();
+            var data = await _inventoryService.CloseInventory();
             if(data is null)
             {
                 return ApiResponse<string>.Fail("Failed");
