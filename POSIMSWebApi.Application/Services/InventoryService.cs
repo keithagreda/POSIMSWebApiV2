@@ -33,85 +33,148 @@ namespace POSIMSWebApi.Application.Services
             _memoryCache = memoryCache;
         }
 
+        //public async Task<ApiResponse<PaginatedResult<GetInventoryDto>>> GetAllInventory(InventoryFilter input)
+        //{
+        //    if (!_memoryCache.TryGetValue(_allInventory, out PaginatedResult<GetInventoryDto> result))
+        //    {
+        //        try
+        //        {
+        //            await sempahore.WaitAsync(); 
+
+        //            if (!_memoryCache.TryGetValue(_allInventory, out result))
+        //            {
+        //                var groupedInventory = (from invBegD in _unitOfWork.InventoryBeginningDetails.GetQueryable()
+        //                                        join invBeg in _unitOfWork.InventoryBeginning.GetQueryable()
+        //                                        on invBegD.InventoryBeginningId equals invBeg.Id
+
+        //                                        join prod in _unitOfWork.Product.GetQueryable()
+        //                                        on invBegD.ProductId equals prod.Id into prodGroup
+        //                                        from prod in prodGroup.DefaultIfEmpty()
+
+        //                                        join recv in _unitOfWork.StocksReceiving.GetQueryable()
+        //                                        on invBegD.InventoryBeginningId equals recv.InventoryBeginningId into recvGroup
+        //                                        from recv in recvGroup.DefaultIfEmpty()
+
+        //                                        join salesHeader in _unitOfWork.SalesHeader.GetQueryable()
+        //                                        on invBegD.InventoryBeginningId equals salesHeader.InventoryBeginningId into salesHeaderGroup
+        //                                        from salesHeader in salesHeaderGroup.DefaultIfEmpty()
+
+        //                                        join salesDetail in _unitOfWork.SalesDetail.GetQueryable()
+        //                                        on new { SalesHeaderId = salesHeader.Id, ProductId = prod.Id }
+        //                                        equals new { SalesHeaderId = salesDetail.SalesHeaderId, ProductId = salesDetail.ProductId } into salesDetailGroup
+        //                                        from salesDetail in salesDetailGroup.DefaultIfEmpty()
+
+        //                                        where invBeg.Status == InventoryStatus.Closed
+
+        //                                        group new { invBegD, recv, salesDetail } // ✅ Corrected grouping
+        //                                        by new
+        //                                        {
+        //                                            InventoryId = invBegD.InventoryBeginningId,
+        //                                            ProductId = invBegD.ProductId,
+        //                                            ProductName = prod.Name,
+        //                                            InventoryOpened = invBeg.CreationTime,
+        //                                            InventoryClosed = invBeg.TimeClosed
+        //                                        } into groupedData
+
+        //                                        select new GetInventoryDto
+        //                                        {
+        //                                            InventoryId = groupedData.Key.InventoryId,
+        //                                            ProductName = groupedData.Key.ProductName,
+        //                                            InventoryBegTime = groupedData.Key.InventoryOpened,
+        //                                            InventoryEndTime = groupedData.Key.InventoryClosed,
+
+        //                                            BegQty = groupedData.Sum(x => x.invBegD != null ? x.invBegD.Qty : 0m),
+        //                                            ReceivedQty = groupedData.Sum(x => x.recv != null ? x.recv.Quantity : 0m),
+        //                                            SalesQty = groupedData.Sum(x => x.salesDetail != null ? x.salesDetail.Quantity : 0m)
+        //                                        });
+        //                var paginatedResult = await groupedInventory
+        //                    .WhereIf(input.MinCreationTime is null, e => e.InventoryBegTime == input.MinCreationTime)
+        //                    .WhereIf(input.MaxClosedTime is null, e => e.InventoryEndTime == input.MaxClosedTime)
+        //                    .OrderByDescending(e => e.InventoryEndTime)
+        //                    .ToPaginatedResult(input.PageNumber, input.PageSize)
+        //                    .ToListAsync();
+
+        //                var totalCount = await groupedInventory.CountAsync();
+
+
+
+        //                result = new PaginatedResult<GetInventoryDto>(paginatedResult, totalCount, (int)input.PageNumber, (int)input.PageSize);
+
+        //                var cacheOptions = new MemoryCacheEntryOptions()
+        //                    .SetSlidingExpiration(TimeSpan.FromMinutes(30))
+        //                    .AddExpirationToken(new CancellationChangeToken(_cts.Token))
+        //                    .SetSize(1);
+
+        //                _memoryCache.Set(_allInventory, result, cacheOptions);
+        //            }
+        //        }
+        //        finally
+        //        {
+        //            sempahore.Release();
+        //        }
+        //    }
+        //    // Current Inventory
+
+        //    if (result.TotalCount <= 0) ApiResponse<PaginatedResult<GetInventoryDto>>.Fail(new ArgumentNullException("Error! Current Stocks can't be generated", nameof(result)).ToString());
+        //    return ApiResponse<PaginatedResult<GetInventoryDto>>.Success(result);
+        //}
+
         public async Task<ApiResponse<PaginatedResult<GetInventoryDto>>> GetAllInventory(InventoryFilter input)
         {
-            if (!_memoryCache.TryGetValue(_allInventory, out PaginatedResult<GetInventoryDto> result))
-            {
-                try
-                {
-                    await sempahore.WaitAsync(); 
+            var groupedInventory = (from invBegD in _unitOfWork.InventoryBeginningDetails.GetQueryable()
+                                    join invBeg in _unitOfWork.InventoryBeginning.GetQueryable()
+                                    on invBegD.InventoryBeginningId equals invBeg.Id
 
-                    if (!_memoryCache.TryGetValue(_allInventory, out result))
-                    {
-                        var groupedInventory = (from invBegD in _unitOfWork.InventoryBeginningDetails.GetQueryable()
-                                                join invBeg in _unitOfWork.InventoryBeginning.GetQueryable()
-                                                on invBegD.InventoryBeginningId equals invBeg.Id
+                                    join prod in _unitOfWork.Product.GetQueryable()
+                                    on invBegD.ProductId equals prod.Id into prodGroup
+                                    from prod in prodGroup.DefaultIfEmpty()
 
-                                                join prod in _unitOfWork.Product.GetQueryable()
-                                                on invBegD.ProductId equals prod.Id into prodGroup
-                                                from prod in prodGroup.DefaultIfEmpty()
+                                    join recv in _unitOfWork.StocksReceiving.GetQueryable()
+                                    on invBegD.InventoryBeginningId equals recv.InventoryBeginningId into recvGroup
+                                    from recv in recvGroup.DefaultIfEmpty()
 
-                                                join recv in _unitOfWork.StocksReceiving.GetQueryable()
-                                                on invBegD.InventoryBeginningId equals recv.InventoryBeginningId into recvGroup
-                                                from recv in recvGroup.DefaultIfEmpty()
+                                    join salesHeader in _unitOfWork.SalesHeader.GetQueryable()
+                                    on invBegD.InventoryBeginningId equals salesHeader.InventoryBeginningId into salesHeaderGroup
+                                    from salesHeader in salesHeaderGroup.DefaultIfEmpty()
 
-                                                join salesHeader in _unitOfWork.SalesHeader.GetQueryable()
-                                                on invBegD.InventoryBeginningId equals salesHeader.InventoryBeginningId into salesHeaderGroup
-                                                from salesHeader in salesHeaderGroup.DefaultIfEmpty()
+                                    join salesDetail in _unitOfWork.SalesDetail.GetQueryable()
+                                    on new { SalesHeaderId = salesHeader.Id, ProductId = prod.Id }
+                                    equals new { SalesHeaderId = salesDetail.SalesHeaderId, ProductId = salesDetail.ProductId } into salesDetailGroup
+                                    from salesDetail in salesDetailGroup.DefaultIfEmpty()
 
-                                                join salesDetail in _unitOfWork.SalesDetail.GetQueryable()
-                                                on new { SalesHeaderId = salesHeader.Id, ProductId = prod.Id }
-                                                equals new { SalesHeaderId = salesDetail.SalesHeaderId, ProductId = salesDetail.ProductId } into salesDetailGroup
-                                                from salesDetail in salesDetailGroup.DefaultIfEmpty()
+                                    where invBeg.Status == InventoryStatus.Closed
 
-                                                where invBeg.Status == InventoryStatus.Closed
+                                    group new { invBegD, recv, salesDetail } // ✅ Corrected grouping
+                                    by new
+                                    {
+                                        InventoryId = invBegD.InventoryBeginningId,
+                                        ProductId = invBegD.ProductId,
+                                        ProductName = prod.Name,
+                                        InventoryOpened = invBeg.CreationTime,
+                                        InventoryClosed = invBeg.TimeClosed
+                                    } into groupedData
 
-                                                group new { invBegD, recv, salesDetail } // ✅ Corrected grouping
-                                                by new
-                                                {
-                                                    InventoryId = invBegD.InventoryBeginningId,
-                                                    ProductId = invBegD.ProductId,
-                                                    ProductName = prod.Name,
-                                                    InventoryOpened = invBeg.CreationTime,
-                                                    InventoryClosed = invBeg.TimeClosed
-                                                } into groupedData
+                                    select new GetInventoryDto
+                                    {
+                                        InventoryId = groupedData.Key.InventoryId,
+                                        ProductName = groupedData.Key.ProductName,
+                                        InventoryBegTime = groupedData.Key.InventoryOpened,
+                                        InventoryEndTime = groupedData.Key.InventoryClosed,
 
-                                                select new GetInventoryDto
-                                                {
-                                                    InventoryId = groupedData.Key.InventoryId,
-                                                    ProductName = groupedData.Key.ProductName,
-                                                    InventoryBegTime = groupedData.Key.InventoryOpened,
-                                                    InventoryEndTime = groupedData.Key.InventoryClosed,
+                                        BegQty = groupedData.Sum(x => x.invBegD != null ? x.invBegD.Qty : 0m),
+                                        ReceivedQty = groupedData.Sum(x => x.recv != null ? x.recv.Quantity : 0m),
+                                        SalesQty = groupedData.Sum(x => x.salesDetail != null ? x.salesDetail.Quantity : 0m)
+                                    });
+            var paginatedResult = await groupedInventory
+                .WhereIf(input.MinCreationTime is null, e => e.InventoryBegTime == input.MinCreationTime)
+                .WhereIf(input.MaxClosedTime is null, e => e.InventoryEndTime == input.MaxClosedTime)
+                .OrderByDescending(e => e.InventoryEndTime)
+                .ToPaginatedResult(input.PageNumber, input.PageSize)
+                .ToListAsync();
 
-                                                    BegQty = groupedData.Sum(x => x.invBegD != null ? x.invBegD.Qty : 0m),
-                                                    ReceivedQty = groupedData.Sum(x => x.recv != null ? x.recv.Quantity : 0m),
-                                                    SalesQty = groupedData.Sum(x => x.salesDetail != null ? x.salesDetail.Quantity : 0m)
-                                                });
-                        var paginatedResult = await groupedInventory
-                            .OrderByDescending(e => e.InventoryEndTime)
-                            .ToPaginatedResult(input.PageNumber, input.PageSize)
-                            .ToListAsync();
+            var totalCount = await groupedInventory.CountAsync();
 
-                        var totalCount = await groupedInventory.CountAsync();
-
-
-
-                        result = new PaginatedResult<GetInventoryDto>(paginatedResult, totalCount, (int)input.PageNumber, (int)input.PageSize);
-
-                        var cacheOptions = new MemoryCacheEntryOptions()
-                            .SetSlidingExpiration(TimeSpan.FromMinutes(30))
-                            .AddExpirationToken(new CancellationChangeToken(_cts.Token))
-                            .SetSize(1);
-
-                        _memoryCache.Set(_allInventory, result, cacheOptions);
-                    }
-                }
-                finally
-                {
-                    sempahore.Release();
-                }
-            }
-            // Current Inventory
+            var result = new PaginatedResult<GetInventoryDto>(paginatedResult, totalCount, (int)input.PageNumber, (int)input.PageSize);
 
             if (result.TotalCount <= 0) ApiResponse<PaginatedResult<GetInventoryDto>>.Fail(new ArgumentNullException("Error! Current Stocks can't be generated", nameof(result)).ToString());
             return ApiResponse<PaginatedResult<GetInventoryDto>>.Success(result);
