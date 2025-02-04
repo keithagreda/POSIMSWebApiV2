@@ -127,7 +127,7 @@ namespace POSIMSWebApi.Controllers
                         TransNum = e.TransNum,
                         TransDate = e.CreationTime,
                         TotalAmount = e.TotalAmount,
-                        CustomerName = string.Format("{0} {1}", e.CustomerFk.Firstname, e.CustomerFk.Lastname),
+                        CustomerName = e.CustomerFk.Name,
                         SoldById = e.CreatedBy,
                         SoldBy = e.CreatedBy.ToString(),
                         //TODO:
@@ -144,29 +144,57 @@ namespace POSIMSWebApi.Controllers
                     .OrderByDescending(e => e.TransDate)
                     .ToListAsync();
 
-                projection.ForEach(async (header) =>
+                foreach(var header in projection)
                 {
                     var currUser = await _userManager.FindByIdAsync(header.SoldBy);
                     var finalTotalSales = 0m;
-                    header.ViewSalesDetailDtos.ForEach((item) =>
+
+                    header.SoldBy = currUser?.UserName ?? "";
+
+                    foreach(var item in header.ViewSalesDetailDtos)
                     {
-                        finalTotalSales += item.Amount;
-                    });
+                        header.ViewSalesDetailDtos.ForEach((item) =>
+                        {
+                            finalTotalSales += item.Amount;
+                        });
 
 
-                    if (finalTotalSales == header.TotalAmount)
-                    {
-                        header.FinalTotalAmount = header.TotalAmount;
-                        header.Discount = 0m;
+                        if (finalTotalSales == header.TotalAmount)
+                        {
+                            header.FinalTotalAmount = header.TotalAmount;
+                            header.Discount = 0m;
+                        }
+                        else
+                        {
+                            header.FinalTotalAmount = finalTotalSales;
+                            header.Discount = Math.Round((header.TotalAmount - finalTotalSales) / header.TotalAmount * 100, 2, MidpointRounding.AwayFromZero);
+                        }
                     }
-                    else
-                    {
-                        header.FinalTotalAmount = finalTotalSales;
-                        header.Discount = Math.Round((header.TotalAmount - finalTotalSales) / header.TotalAmount * 100, 2, MidpointRounding.AwayFromZero);
-                    }
-                });
+                }
                 var res = new PaginatedResult<ViewSalesHeaderDto>(projection, await query.CountAsync(), (int)input.PageNumber, (int)input.PageSize);
                 return Ok(ApiResponse<PaginatedResult<ViewSalesHeaderDto>>.Success(res));
+                //projection.ForEach(async (header) =>
+                //{
+                //    var currUser = await _userManager.FindByIdAsync(header.SoldBy);
+                //    var finalTotalSales = 0m;
+                //    header.ViewSalesDetailDtos.ForEach((item) =>
+                //    {
+                //        finalTotalSales += item.Amount;
+                //    });
+
+
+                //    if (finalTotalSales == header.TotalAmount)
+                //    {
+                //        header.FinalTotalAmount = header.TotalAmount;
+                //        header.Discount = 0m;
+                //    }
+                //    else
+                //    {
+                //        header.FinalTotalAmount = finalTotalSales;
+                //        header.Discount = Math.Round((header.TotalAmount - finalTotalSales) / header.TotalAmount * 100, 2, MidpointRounding.AwayFromZero);
+                //    }
+                //});
+
             }
             catch (Exception ex)
             {

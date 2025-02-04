@@ -178,7 +178,7 @@ namespace POSIMSWebApi.Application.Services
                                         SalesQty = groupedData.Sum(x => x.salesDetail != null ? x.salesDetail.Quantity : 0m)
                                     });
             var paginatedResult = await groupedInventory
-                .WhereIf(input.ProductName is not null, e => e.ProductName.Contains(input.ProductName))
+                .WhereIf(!string.IsNullOrWhiteSpace(input.ProductName), e => e.ProductName.Contains(input.ProductName))
                 .WhereIf(input.MinCreationTime is not null, e => e.InventoryBegTime >= ConvertToUTC8(input.MinCreationTime))
                 .WhereIf(input.MaxClosedTime is not null, e => e.InventoryEndTime <= ConvertToUTC8(input.MaxClosedTime).AddHours(23).AddMinutes(59))
                 .OrderByDescending(e => e.InventoryEndTime)
