@@ -65,9 +65,10 @@ namespace POSIMSWebApi.Application.Dtos.Inventory
 
     public class InventoryFilter : PaginationParams
     {
-        public DateTime? MinCreationTime { get; set; }
-        public DateTime? MaxCreationTime { get; set; }
-        public DateTime? MinClosedTime { get; set; }
-        public DateTime? MaxClosedTime { get; set; }
+        public string? ProductName { get; set; }
+        public DateTimeOffset? MinCreationTime { get; set; }
+        public DateTimeOffset? MaxCreationTime { get; set; }
+        public DateTimeOffset? MinClosedTime { get; set; }
+        public DateTimeOffset? MaxClosedTime { get; set; }
     }
 }

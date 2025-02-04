@@ -66,7 +66,11 @@ namespace POSIMSWebApi.Application.Services
                 ExpirationDate = daysTillExp,
                 StorageLocationId = input.StorageLocationId
             };
-            var headerId = await _unitOfWork.StocksHeader.InsertAndGetIdAsync(header);
+
+            await _unitOfWork.StocksHeader.AddAsync(header);
+            _unitOfWork.Complete();
+
+            var headerId = header.Id;
             return ApiResponse<int>.Success(headerId);
         }
 

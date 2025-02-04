@@ -119,8 +119,20 @@ namespace POSIMSWebApi.Application.Services
         //    return ApiResponse<PaginatedResult<GetInventoryDto>>.Success(result);
         //}
 
+        private DateTimeOffset ConvertToUTC8(DateTimeOffset? date)
+        {
+            if(date is null)
+            {
+                return DateTimeOffset.MinValue;
+            }
+            var notnullDate = (DateTimeOffset)date;
+            var result = notnullDate.ToOffset(TimeSpan.FromHours(8));
+            return result;
+        }
+
         public async Task<ApiResponse<PaginatedResult<GetInventoryDto>>> GetAllInventory(InventoryFilter input)
         {
+
             var groupedInventory = (from invBegD in _unitOfWork.InventoryBeginningDetails.GetQueryable()
                                     join invBeg in _unitOfWork.InventoryBeginning.GetQueryable()
                                     on invBegD.InventoryBeginningId equals invBeg.Id
@@ -144,7 +156,7 @@ namespace POSIMSWebApi.Application.Services
 
                                     where invBeg.Status == InventoryStatus.Closed
 
-                                    group new { invBegD, recv, salesDetail } // ✅ Corrected grouping
+                                    group new { invBegD, recv, salesDetail } 
                                     by new
                                     {
                                         InventoryId = invBegD.InventoryBeginningId,
@@ -166,8 +178,9 @@ namespace POSIMSWebApi.Application.Services
                                         SalesQty = groupedData.Sum(x => x.salesDetail != null ? x.salesDetail.Quantity : 0m)
                                     });
             var paginatedResult = await groupedInventory
-                .WhereIf(input.MinCreationTime is null, e => e.InventoryBegTime == input.MinCreationTime)
-                .WhereIf(input.MaxClosedTime is null, e => e.InventoryEndTime == input.MaxClosedTime)
+                .WhereIf(input.ProductName is not null, e => e.ProductName.Contains(input.ProductName))
+                .WhereIf(input.MinCreationTime is not null, e => e.InventoryBegTime >= ConvertToUTC8(input.MinCreationTime))
+                .WhereIf(input.MaxClosedTime is not null, e => e.InventoryEndTime <= ConvertToUTC8(input.MaxClosedTime).AddHours(23).AddMinutes(59))
                 .OrderByDescending(e => e.InventoryEndTime)
                 .ToPaginatedResult(input.PageNumber, input.PageSize)
                 .ToListAsync();
