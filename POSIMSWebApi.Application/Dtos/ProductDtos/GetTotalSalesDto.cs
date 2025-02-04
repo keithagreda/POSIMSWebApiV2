@@ -18,6 +18,9 @@
     public class ViewSalesHeaderDto
     {
         public string TransNum { get; set; }
+        public string CustomerName { get; set; }
+        public Guid SoldById { get; set; }
+        public string SoldBy { get; set; }
         public DateTimeOffset TransDate { get; set; }
         public decimal TotalAmount { get; set; }
         public decimal FinalTotalAmount { get; set; }

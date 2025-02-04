@@ -116,8 +116,63 @@ namespace POSIMSWebApi.Controllers
         [HttpGet("ViewSales")]
         public async Task<ActionResult<ApiResponse<PaginatedResult<ViewSalesHeaderDto>>>> ViewSales([FromQuery]ViewSalesParams input)
         {
-           var result = await _salesService.ViewSales(input);
-            return Ok(result);
+            try
+            {
+                var query = _unitOfWork.SalesHeader.GetQueryable().Include(e => e.CustomerFk).Include(e => e.SalesDetails).ThenInclude(e => e.ProductFk)
+                .WhereIf(input.SalesHeaderId != null, e => e.Id == input.SalesHeaderId)
+                .WhereIf(!string.IsNullOrWhiteSpace(input.FilterText), e => e.TransNum.Contains(input.FilterText));
+                var projection = await query
+                    .Select(e => new ViewSalesHeaderDto
+                    {
+                        TransNum = e.TransNum,
+                        TransDate = e.CreationTime,
+                        TotalAmount = e.TotalAmount,
+                        CustomerName = string.Format("{0} {1}", e.CustomerFk.Firstname, e.CustomerFk.Lastname),
+                        SoldById = e.CreatedBy,
+                        SoldBy = e.CreatedBy.ToString(),
+                        //TODO:
+                        Discount = 0m,
+                        ViewSalesDetailDtos = e.SalesDetails.Select(e => new ViewSalesDetailDto
+                        {
+                            Amount = e.ActualSellingPrice != 0 ? e.ActualSellingPrice : e.Amount,
+                            ItemName = e.ProductFk.Name,
+                            Quantity = e.Quantity,
+                            Rate = e.ProductPrice
+                        }).ToList()
+                    })
+                    .ToPaginatedResult(input.PageNumber, input.PageSize)
+                    .OrderByDescending(e => e.TransDate)
+                    .ToListAsync();
+
+                projection.ForEach(async (header) =>
+                {
+                    var currUser = await _userManager.FindByIdAsync(header.SoldBy);
+                    var finalTotalSales = 0m;
+                    header.ViewSalesDetailDtos.ForEach((item) =>
+                    {
+                        finalTotalSales += item.Amount;
+                    });
+
+
+                    if (finalTotalSales == header.TotalAmount)
+                    {
+                        header.FinalTotalAmount = header.TotalAmount;
+                        header.Discount = 0m;
+                    }
+                    else
+                    {
+                        header.FinalTotalAmount = finalTotalSales;
+                        header.Discount = Math.Round((header.TotalAmount - finalTotalSales) / header.TotalAmount * 100, 2, MidpointRounding.AwayFromZero);
+                    }
+                });
+                var res = new PaginatedResult<ViewSalesHeaderDto>(projection, await query.CountAsync(), (int)input.PageNumber, (int)input.PageSize);
+                return Ok(ApiResponse<PaginatedResult<ViewSalesHeaderDto>>.Success(res));
+            }
+            catch (Exception ex)
+            {
+
+                return BadRequest(ApiResponse<PaginatedResult<ViewSalesHeaderDto>>.Fail(ex.Message));
+            }
         }
     }
 }

@@ -543,8 +543,6 @@ namespace POSIMSWebApi.Application.Services
                         header.FinalTotalAmount = finalTotalSales;
                         header.Discount = Math.Round( (header.TotalAmount - finalTotalSales) / header.TotalAmount * 100, 2, MidpointRounding.AwayFromZero);
                     }
-
-                    
                 });
                 var res = new PaginatedResult<ViewSalesHeaderDto>(projection, await query.CountAsync(), (int)input.PageNumber, (int)input.PageSize);
                 return ApiResponse<PaginatedResult<ViewSalesHeaderDto>>.Success(res);
