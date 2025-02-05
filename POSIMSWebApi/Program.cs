@@ -48,8 +48,8 @@ builder.Services.AddDbContext<ApplicationContext>(options =>
 builder.Services.AddDbContext<AuthContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 
-builder.Services.AddDbContext<SerilogContext>(options => 
-    options.UseSqlite(builder.Configuration.GetConnectionString("SqlLite")));
+//builder.Services.AddDbContext<SerilogContext>(options => 
+//    options.UseSqlite(builder.Configuration.GetConnectionString("SqlLite")));
 
 builder.Services.AddTransient<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IProductService, ProductService>();

@@ -88,6 +88,14 @@ namespace POSIMSWebApi.Authentication.Services
                     }
                 }
 
+                if (register.Role == UserRoleEnum.Owner)
+                {
+                    if (await _roleManager.RoleExistsAsync(UserRole.Owner))
+                    {
+                        await _userManager.AddToRoleAsync(user, UserRole.Owner);
+                    }
+                }
+
                 return "Success";
             }
             catch (Exception ex)
@@ -124,6 +132,11 @@ namespace POSIMSWebApi.Authentication.Services
             if (!await _roleManager.RoleExistsAsync(UserRole.Admin))
             {
                 await _roleManager.CreateAsync(new IdentityRole(UserRole.Admin));
+            }
+
+            if (!await _roleManager.RoleExistsAsync(UserRole.Owner))
+            {
+                await _roleManager.CreateAsync(new IdentityRole(UserRole.Owner));
             }
             _creationIte++;
             return 1;
