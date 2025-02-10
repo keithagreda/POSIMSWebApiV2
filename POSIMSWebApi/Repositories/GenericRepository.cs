@@ -194,5 +194,17 @@ namespace DataAccess.EFCore.Repositories
         {
             _context.Set<T>().RemoveRange(entities);
         }
+
+        public async Task RemoveAsync(T entity)
+        {
+            _context.Set<T>().Remove(entity);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task RemoveRangeAsync(IEnumerable<T> entities)
+        {
+            _context.Set<T>().RemoveRange(entities);
+            await _context.SaveChangesAsync();
+        }
     }
 }

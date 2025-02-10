@@ -33,9 +33,10 @@ namespace POSIMSWebApi.Controllers
         public async Task<ActionResult<ApiResponse<PaginatedResult<SalesHeaderDto>>>> GetSales([FromQuery]FilterSales input)
         {
             //dapat naay created by
-            var data = await _unitOfWork.SalesHeader.GetQueryable().Include(e => e.SalesDetails)
+            var query = _unitOfWork.SalesHeader.GetQueryable().Include(e => e.SalesDetails)
                 .ThenInclude(e => e.ProductFk)
-                .Include(e => e.CustomerFk)
+                .Include(e => e.CustomerFk);
+            var data = await query
                 .OrderByDescending(e => e.CreationTime)
                 .ToPaginatedResult(input.PageNumber, input.PageSize)
                 .Select(e => new SalesHeaderDto
@@ -63,7 +64,7 @@ namespace POSIMSWebApi.Controllers
                 item.SoldBy = creator?.UserName ?? "";
             }
 
-            var result = new PaginatedResult<SalesHeaderDto>(data, data.Count, (int)input.PageNumber, (int)input.PageSize);
+            var result = new PaginatedResult<SalesHeaderDto>(data, await query.CountAsync(), (int)input.PageNumber, (int)input.PageSize);
 
             return ApiResponse<PaginatedResult<SalesHeaderDto>>.Success(result);
                 
@@ -98,21 +99,21 @@ namespace POSIMSWebApi.Controllers
             _unitOfWork.Complete();
             return result;
         }
-        [Authorize(Roles = UserRole.Admin)]
+        [Authorize(Roles = UserRole.Admin + "," + UserRole.Owner)]
         [HttpGet("GetTotalSales")]
         public async Task<ActionResult<ApiResponse<GetTotalSalesDto>>> GetTotalSales()
         {
             var result = await _salesService.GetTotalSales();
             return Ok(result);
         }
-        [Authorize(Roles = UserRole.Admin)]
+        [Authorize(Roles = UserRole.Admin + "," + UserRole.Owner)]
         [HttpGet("GetTotalMonthlySales")]
         public async Task<ActionResult<ApiResponse<List<PerMonthSalesDto>>>> GetPerMonthSales(int? year)
         {
             var result = await _salesService.GetPerMonthSales(year);
             return Ok(result);
         }
-        [Authorize(Roles = UserRole.Admin + "," + UserRole.Cashier)]
+        [Authorize(Roles = UserRole.Admin + "," + UserRole.Cashier + "," + UserRole.Owner)]
         [HttpGet("ViewSales")]
         public async Task<ActionResult<ApiResponse<PaginatedResult<ViewSalesHeaderDto>>>> ViewSales([FromQuery]ViewSalesParams input)
         {

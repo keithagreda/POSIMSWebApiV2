@@ -39,5 +39,8 @@ namespace Domain.Interfaces
         Task<string> AddRangeAsync(IEnumerable<T> entities);
         void Remove(T entity);
         void RemoveRange(IEnumerable<T> entities);
+        Task RemoveAsync(T entity);
+
+        Task RemoveRangeAsync(IEnumerable<T> entities);
     }
 }

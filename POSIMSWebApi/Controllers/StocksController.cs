@@ -63,7 +63,7 @@ namespace POSIMSWebApi.Controllers
 
             return Ok(ApiResponse<List<GetAllStocksReceivingDto>>.Success(result));
         }
-        [Authorize(Roles = UserRole.Admin + "," + UserRole.Inventory)]
+        [Authorize(Roles = UserRole.Admin + "," + UserRole.Inventory + "," + UserRole.Owner)]
         [HttpGet("GetStocksGeneration")]
         public async Task<ActionResult<ApiResponse<List<GetStocksGenerationDto>>>> GetStocksGeneration([FromQuery]GetStocksGenerationInput input)
         {

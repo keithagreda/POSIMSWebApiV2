@@ -34,15 +34,40 @@ namespace POSIMSWebApi.Controllers
         }
 
         [Authorize(Roles = UserRole.Admin + "," + UserRole.Inventory + "," + UserRole.Cashier)]
-        [HttpPost("CreateProduct")]
-        public async Task<ActionResult<ApiResponse<string>>> CreateProduct(CreateProductDto input)
+        [HttpPost("CreateOrEditProduct")]
+        public async Task<ActionResult<ApiResponse<string>>> CreateOrEditProduct(CreateProductV1Dto input)
         {
             try
             {
-                var result = await _productService.CreateProduct(input);
                 if (!ModelState.IsValid)
                     return BadRequest(ModelState);
+                var result = await _productService.CreateOrEditProduct(input);
+                
                 return Ok(result);
+            }
+            catch (Exception ex)
+            {
+
+                throw new Exception(ex.Message);
+            }
+        }
+
+        [Authorize(Roles = UserRole.Admin + "," + UserRole.Inventory)]
+        [HttpPost("DeleteProduct/{prodId}")]
+        public async Task<ActionResult<ApiResponse<string>>> DeleteProduct(int prodId)
+        {
+            try
+            {
+                if(!ModelState.IsValid) return BadRequest(ModelState);
+                var product = await _unitOfWork.Product.FirstOrDefaultAsync(prodId);
+                if(product is null)
+                {
+                    return BadRequest(ApiResponse<string>.Fail("Error! Product Not Found!"));
+                }
+
+                _unitOfWork.Product.Remove(product);
+                _unitOfWork.Complete();
+                return Ok(ApiResponse<string>.Success($"Successfully removed {product.Name}!"));
             }
             catch (Exception ex)
             {
@@ -113,32 +138,32 @@ namespace POSIMSWebApi.Controllers
 
         [Authorize(Roles = UserRole.Admin + "," + UserRole.Inventory + "," + UserRole.Cashier)]
         [HttpGet("GetProductForEdit/{id}")]
-        public async Task<ActionResult<ApiResponse<CreateProductDto>>> GetProductForEdit(int id)
+        public async Task<ActionResult<ApiResponse<CreateProductV1Dto>>> GetProductForEdit(int id)
         {
             if (id == 0)
             {
-                return ApiResponse<CreateProductDto>.Fail("Invalid action! Id can't be null");
+                return ApiResponse<CreateProductV1Dto>.Fail("Invalid action! Id can't be null");
             }
             var data = await _unitOfWork.Product.GetQueryable().Include(e => e.ProductCategories)
-                .Select(e => new CreateProductDto
+                .Select(e => new CreateProductV1Dto
                 {
-
+                    Id = e.Id,
                     DaysTillExpiration = e.DaysTillExpiration,
                     Name = e.Name,
                     Price = e.Price,
-                    ProductCategories = e.ProductCategories.Select(e => new ProductCategoryDto
+                    ProductCategories = e.ProductCategories.Select(e => new ProductCategoryDtoV1
                     {
                         Name = e.Name,
                         Id = e.Id
-                    }).ToList()
+                    }).FirstOrDefault()
                 }).FirstOrDefaultAsync();
 
             if(data is null)
             {
-                return ApiResponse<CreateProductDto>.Fail("Error! Product Not Found.");
+                return ApiResponse<CreateProductV1Dto>.Fail("Error! Product Not Found.");
             }
 
-            return Ok(ApiResponse<CreateProductDto>.Success(data));
+            return Ok(ApiResponse<CreateProductV1Dto>.Success(data));
         }
 
         [Authorize(Roles = UserRole.Admin + "," + UserRole.Inventory + "," + UserRole.Cashier)]

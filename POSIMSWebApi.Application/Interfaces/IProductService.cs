@@ -7,6 +7,6 @@ namespace POSIMSWebApi.Application.Interfaces
     public interface IProductService
     {
         Task<ApiResponse<IList<ProductWithCategDto>>> GetAllProductsWithCategory();
-        Task<ApiResponse<string>> CreateProduct(CreateProductDto input);
+        Task<ApiResponse<string>> CreateOrEditProduct(CreateProductV1Dto input);
     }
 }

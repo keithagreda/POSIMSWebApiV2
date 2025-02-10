@@ -5,6 +5,7 @@ using LanguageExt.Common;
 using Microsoft.EntityFrameworkCore;
 using POSIMSWebApi.Application.Dtos.ProductDtos;
 using POSIMSWebApi.Application.Interfaces;
+using POSIMSWebApi.QueryExtensions;
 using System.Linq;
 
 namespace POSIMSWebApi.Application.Services
@@ -34,38 +35,72 @@ namespace POSIMSWebApi.Application.Services
             return ApiResponse<IList<ProductWithCategDto>>.Success(data, "Request Success!");
         }
 
-        public async Task<ApiResponse<string>> CreateProduct(CreateProductDto input)
+        public async Task<ApiResponse<string>> CreateOrEditProduct(CreateProductV1Dto input)
+        {
+            var exist = _unitOfWork.Product.GetQueryable()
+                .WhereIf(input.Id is not null, e => e.Id != input.Id)
+                .Where(e => e.Name.Contains(input.Name));
+
+            if(await exist.AnyAsync())
+            {
+                return ApiResponse<string>.Fail("Invalid action! Product name already exists!");
+            }
+            var result = new ApiResponse<string>();
+            //create
+            if (input.Id is null)
+            {
+               return result = await CreateProduct(input);
+            }
+            return result = await EditProduct(input);
+        }
+
+        private async Task<ApiResponse<string>> EditProduct(CreateProductV1Dto input)
+        {
+            var query = _unitOfWork.Product.GetQueryable();
+            var toEdit = await query.FirstOrDefaultAsync(e => e.Id == input.Id);
+            if (toEdit is null)
+            {
+                return ApiResponse<string>.Fail("Error! Product Not Found!");
+            }
+
+            //check if product name is changed
+            var generatedProdCode = toEdit.ProdCode;
+            var count = 0;
+            if (toEdit.Name != input.Name)
+            {
+                generatedProdCode = GenerateProdCode(input.Name);
+                var existingCode = await query.Where(e => e.ProdCode.Contains(generatedProdCode) && e.Id != input.Id).ToListAsync();
+
+                if (existingCode.Count > 0)
+                {
+                    generatedProdCode = $"{generatedProdCode}{existingCode.Count + 1}";
+                }
+            }
+
+            toEdit.ProdCode = generatedProdCode;
+            toEdit.Name = input.Name;
+            toEdit.DaysTillExpiration = input.DaysTillExpiration;
+
+            var categ = await _unitOfWork.ProductCategory.GetQueryable().Where(e => e.Id == input.ProductCategories.Id).ToListAsync();
+
+            if (categ.Count <= 0)
+            {
+                return ApiResponse<string>.Fail("Product Creation failed input Category doesn't exist!");
+            }
+
+            toEdit.ProductCategories = categ;
+            toEdit.Price = input.Price;
+
+            _unitOfWork.Complete();
+
+            return ApiResponse<string>.Success($"Successfully edited {input.Name}");
+        }
+
+        private async Task<ApiResponse<string>> CreateProduct(CreateProductV1Dto input)
         {
             //data
             //validation
             var query = _unitOfWork.Product.GetQueryable();
-
-            var isExist = await query.AnyAsync(e => e.Name == input.Name);
-
-            if (isExist)
-            {
-                //if(input.ProductCategoryId != 0)
-                //{
-                //    var getProductCategories = await _unitOfWork.Product.GetQueryable().Where(e => e.Name == input.Name)
-                //    .Include(e => e.ProductCategories)
-                //    .Select(e => e.ProductCategories.Select(e => e.Id)).FirstOrDefaultAsync();
-                //    if (getProductCategories.Contains(input.ProductCategoryId))
-                //    {
-                //        return "Invalid Action! Product with this category already exists!";
-                //    }
-
-                //    if (!getProductCategories.Contains(input.ProductCategoryId))
-                //    {
-                //        //save categ
-                //        var product = await _unitOfWork.Product.FirstOrDefaultAsync(e => e.Name == input.Name);
-                //        var addNewCateg = await _unitOfWork.ProductCategory.FirstOrDefaultAsync(e => e.Id == input.ProductCategoryId);
-                //        if (addNewCateg is null) return "Product Creation failed inputted Category doesn't exist!";
-                //        product.ProductCategories.Add(addNewCateg);
-
-                //    }
-                //}
-                return ApiResponse<string>.Fail("Invalid action! Product name already exists!");
-            }
             //getCateg
             var generatedProdCode = GenerateProdCode(input.Name);
 
@@ -76,14 +111,13 @@ namespace POSIMSWebApi.Application.Services
                 prodCode = $"{prodCode}{getExistingCode.Count + 1}";
             }
 
+            var categ = await _unitOfWork.ProductCategory.GetQueryable().Where(e => e.Id == input.ProductCategories.Id).ToListAsync();
 
-
-            List<ProductCategory> categ = new List<ProductCategory>();
-            if(input.ProductCategories.Count != 0)
+            if (categ.Count <= 0)
             {
-                categ = await _unitOfWork.ProductCategory.GetQueryable().Where(e => input.ProductCategories.Select(e => e.Id).Contains(e.Id)).ToListAsync();
-                if (categ.Count <= 0) return ApiResponse<string>.Fail("Product Creation failed input Category doesn't exist!");
+                return ApiResponse<string>.Fail("Product Creation failed input Category doesn't exist!");
             }
+
             var newProduct = new Product
             {
                 Name = input.Name,

@@ -13,7 +13,16 @@ namespace POSIMSWebApi.Application.Dtos.ProductDtos
         public string Name { get; set; }
         public int DaysTillExpiration { get; set; }
         public decimal  Price { get; set; }
-        public List<ProductCategoryDto> ProductCategories { get; set; } = new List<ProductCategoryDto>();
+        public List<ProductCategoryDtoV1>? ProductCategories { get; set; } = new List<ProductCategoryDtoV1>();
+    }
+
+    public class CreateProductV1Dto
+    {
+        public int? Id { get; set; }
+        public string Name { get; set; }
+        public int DaysTillExpiration { get; set; }
+        public decimal Price { get; set; }
+        public ProductCategoryDtoV1? ProductCategories { get; set; }
     }
 
     public class CreateProductSales

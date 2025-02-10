@@ -142,7 +142,6 @@ namespace POSIMSWebApi.Authentication.Services
             return 1;
         }
 
-
         public async Task<ApiResponse<UserLoginDto>> LoginAccount(LoginUserDto login)
         {
             try

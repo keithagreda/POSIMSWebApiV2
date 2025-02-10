@@ -22,7 +22,7 @@ namespace POSIMSWebApi.Controllers
             _unitOfWork = unitOfWork;
         }
 
-        [Authorize(Roles = UserRole.Admin + "," + UserRole.Inventory)]
+        [Authorize(Roles = UserRole.Admin + "," + UserRole.Inventory + "," + UserRole.Owner)]
         [HttpGet("GetCurrentStocks")]
         public async Task<ActionResult<ApiResponse<List<CurrentInventoryDto>>>> GetCurrentStocks()
         {
