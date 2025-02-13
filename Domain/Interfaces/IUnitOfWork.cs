@@ -24,5 +24,7 @@ namespace Domain.Interfaces
         IEntityHistoryRepository EntityHistory { get; }
         int Complete();
         Task<int> CompleteAsync();
+        IQueryable<T> ExecuteRawQuery<T>(string sql, object parameters = null);
+        Task<IQueryable<T>> ExecuteRawQueryAsync<T>(string sql, object parameters = null) where T : class;
     }
 }

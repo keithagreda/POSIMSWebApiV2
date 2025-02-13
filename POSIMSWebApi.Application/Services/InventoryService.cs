@@ -3,6 +3,7 @@ using Domain.Entities;
 using Domain.Enums;
 using Domain.Interfaces;
 using LanguageExt;
+using LanguageExt.TypeClasses;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Primitives;
@@ -132,65 +133,59 @@ namespace POSIMSWebApi.Application.Services
 
         public async Task<ApiResponse<PaginatedResult<GetInventoryDto>>> GetAllInventory(InventoryFilter input)
         {
+            try
+            {
 
-            var groupedInventory = (from invBegD in _unitOfWork.InventoryBeginningDetails.GetQueryable()
-                                    join invBeg in _unitOfWork.InventoryBeginning.GetQueryable()
-                                    on invBegD.InventoryBeginningId equals invBeg.Id
+                var beginningInventoryQuery = from ibd in _unitOfWork.InventoryBeginningDetails.GetQueryable()
+                                              join ib in _unitOfWork.InventoryBeginning.GetQueryable() on ibd.InventoryBeginningId equals ib.Id
+                                              join p in _unitOfWork.Product.GetQueryable() on ibd.ProductId equals p.Id
+                                              where ib.Status == InventoryStatus.Closed
+                                              group ibd by new { ibd.ProductId, ibd.InventoryBeginningId } into g
+                                              select new GetInventoryDto
+                                              {
+                                                  InventoryId = g.Key.InventoryBeginningId,
+                                                  ProductId = g.Key.ProductId,
+                                                  ProductName = g.Select(x => x.ProductFK.Name).FirstOrDefault(),
+                                                  InventoryBegTime = g.Select(x => x.InventoryBeginningFk.CreationTime).FirstOrDefault(),
+                                                  InventoryEndTime = g.Select(x => x.InventoryBeginningFk.TimeClosed).FirstOrDefault(),
+                                                  BegQty = g.Sum(x => x.Qty),
+                                                  SalesQty = _unitOfWork.SalesDetail.GetQueryable()
+                                                                .Include(e => e.SalesHeaderFk)
+                                                                .Where(e => e.SalesHeaderFk.InventoryBeginningId == g.Key.InventoryBeginningId
+                                                                && e.ProductId == g.Key.ProductId).Count() != 0 ? _unitOfWork.SalesDetail.GetQueryable()
+                                                                .Include(e => e.SalesHeaderFk)
+                                                                .Where(e => e.SalesHeaderFk.InventoryBeginningId == g.Key.InventoryBeginningId
+                                                                && e.ProductId == g.Key.ProductId).Sum(e => e.Quantity) : 0m,
+                                                  ReceivedQty = _unitOfWork.StocksReceiving.GetQueryable().Include(e => e.StocksHeaderFk)
+                                                                .Where(e => e.InventoryBeginningId == g.Key.InventoryBeginningId && e.StocksHeaderFk.ProductId == g.Key.ProductId)
+                                                                .Count() != 0 ? _unitOfWork.StocksReceiving.GetQueryable().Include(e => e.StocksHeaderFk)
+                                                                .Where(e => e.InventoryBeginningId == g.Key.InventoryBeginningId && e.StocksHeaderFk.ProductId == g.Key.ProductId)
+                                                                .Sum(e => e.Quantity) : 0m
+                                              };
 
-                                    join prod in _unitOfWork.Product.GetQueryable()
-                                    on invBegD.ProductId equals prod.Id into prodGroup
-                                    from prod in prodGroup.DefaultIfEmpty()
+                // Apply Filtering & Pagination
+                var paginatedQuery = beginningInventoryQuery
+                    .WhereIf(!string.IsNullOrWhiteSpace(input.ProductName), e => e.ProductName.Contains(input.ProductName))
+                    .WhereIf(input.MinCreationTime is not null, e => e.InventoryBegTime >= ConvertToUTC8(input.MinCreationTime))
+                    .WhereIf(input.MaxClosedTime is not null, e => e.InventoryEndTime <= ConvertToUTC8(input.MaxClosedTime).AddHours(23).AddMinutes(59))
+                    .OrderByDescending(e => e.InventoryEndTime)
+                    .ToList();
 
-                                    join recv in _unitOfWork.StocksReceiving.GetQueryable()
-                                    on invBegD.InventoryBeginningId equals recv.InventoryBeginningId into recvGroup
-                                    from recv in recvGroup.DefaultIfEmpty()
 
-                                    join salesHeader in _unitOfWork.SalesHeader.GetQueryable()
-                                    on invBegD.InventoryBeginningId equals salesHeader.InventoryBeginningId into salesHeaderGroup
-                                    from salesHeader in salesHeaderGroup.DefaultIfEmpty()
+                var totalCount = beginningInventoryQuery.Count();
 
-                                    join salesDetail in _unitOfWork.SalesDetail.GetQueryable()
-                                    on new { SalesHeaderId = salesHeader.Id, ProductId = prod.Id }
-                                    equals new { SalesHeaderId = salesDetail.SalesHeaderId, ProductId = salesDetail.ProductId } into salesDetailGroup
-                                    from salesDetail in salesDetailGroup.DefaultIfEmpty()
+                var result = new PaginatedResult<GetInventoryDto>(paginatedQuery, totalCount, (int)input.PageNumber, (int)input.PageSize);
 
-                                    where invBeg.Status == InventoryStatus.Closed
+                if (result.TotalCount <= 0)
+                    return ApiResponse<PaginatedResult<GetInventoryDto>>.Fail("Error! Current Stocks can't be generated");
 
-                                    group new { invBegD, recv, salesDetail } 
-                                    by new
-                                    {
-                                        InventoryId = invBegD.InventoryBeginningId,
-                                        ProductId = invBegD.ProductId,
-                                        ProductName = prod.Name,
-                                        InventoryOpened = invBeg.CreationTime,
-                                        InventoryClosed = invBeg.TimeClosed
-                                    } into groupedData
+                return ApiResponse<PaginatedResult<GetInventoryDto>>.Success(result);
+            }
+            catch (Exception ex )
+            {
 
-                                    select new GetInventoryDto
-                                    {
-                                        InventoryId = groupedData.Key.InventoryId,
-                                        ProductName = groupedData.Key.ProductName,
-                                        InventoryBegTime = groupedData.Key.InventoryOpened,
-                                        InventoryEndTime = groupedData.Key.InventoryClosed,
-
-                                        BegQty = groupedData.Sum(x => x.invBegD != null ? x.invBegD.Qty : 0m),
-                                        ReceivedQty = groupedData.Sum(x => x.recv != null ? x.recv.Quantity : 0m),
-                                        SalesQty = groupedData.Sum(x => x.salesDetail != null ? x.salesDetail.Quantity : 0m)
-                                    });
-            var paginatedResult = await groupedInventory
-                .WhereIf(!string.IsNullOrWhiteSpace(input.ProductName), e => e.ProductName.Contains(input.ProductName))
-                .WhereIf(input.MinCreationTime is not null, e => e.InventoryBegTime >= ConvertToUTC8(input.MinCreationTime))
-                .WhereIf(input.MaxClosedTime is not null, e => e.InventoryEndTime <= ConvertToUTC8(input.MaxClosedTime).AddHours(23).AddMinutes(59))
-                .OrderByDescending(e => e.InventoryEndTime)
-                .ToPaginatedResult(input.PageNumber, input.PageSize)
-                .ToListAsync();
-
-            var totalCount = await groupedInventory.CountAsync();
-
-            var result = new PaginatedResult<GetInventoryDto>(paginatedResult, totalCount, (int)input.PageNumber, (int)input.PageSize);
-
-            if (result.TotalCount <= 0) ApiResponse<PaginatedResult<GetInventoryDto>>.Fail(new ArgumentNullException("Error! Current Stocks can't be generated", nameof(result)).ToString());
-            return ApiResponse<PaginatedResult<GetInventoryDto>>.Success(result);
+                throw ex;
+            }
         }
 
         //public async Task<ApiResponse<PaginatedResult<GetInventoryDto>>> GetAllInventory(InventoryFilter input)

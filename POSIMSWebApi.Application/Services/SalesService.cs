@@ -43,6 +43,8 @@ namespace POSIMSWebApi.Application.Services
             _memoryCache = memoryCache;
         }
 
+
+
         /// <summary>
         /// FOR SINGLE TRANSNUM FIRST
         /// </summary>

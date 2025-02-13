@@ -44,4 +44,16 @@ namespace POSIMSWebApi.Application.Dtos.Sales
         public decimal Amount { get; set; }
     }
 
+    public class SalesSummaryDto
+    {
+        public string CustomerName { get; set; }
+        public string SoldBy { get; set; }
+        public string TransNum { get; set; }
+        public DateTimeOffset DateTime { get; set; }
+        public string ProductName { get; set; }
+        public decimal Quantity { get; set; }
+        public decimal Rate { get; set; }
+        public decimal TotalPrice { get; set; }
+    }
+
 }

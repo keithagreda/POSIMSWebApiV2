@@ -18,13 +18,25 @@ namespace POSIMSWebApi.Application.Dtos.Inventory
 
     public class GetInventoryDto
     {
-        public Guid InventoryId { get; set; }
+        public Guid? InventoryId { get; set; }
+        public int ProductId { get; set; }
         public string ProductName { get; set; }
         public decimal BegQty { get; set; }
         public decimal ReceivedQty { get; set; }
         public decimal SalesQty { get; set; }
         public DateTimeOffset? InventoryBegTime { get; set; }
         public DateTimeOffset? InventoryEndTime { get; set;}
+    }
+
+    public class GetInventoryV1Dto
+    {
+        public Guid InventoryId { get; set; }
+        public int ProductId { get; set; }
+        public string ProductName { get; set; }
+        public decimal BegQty { get; set; }
+        public DateTimeOffset? InventoryBegTime { get; set; }
+        public DateTimeOffset? InventoryEndTime { get; set; }
+        public decimal BeginningInvTotal { get; set; }
     }
 
     public class CurrentInventoryV1Dto
@@ -58,6 +70,7 @@ namespace POSIMSWebApi.Application.Dtos.Inventory
 
     public class ProductInventoryDto
     {
+        public Guid? InventoryId { get; set; }
         public int ProductId { get; set; }
         public string ProductName { get; set; }
         public decimal TotalQuantity { get; set; }
@@ -70,5 +83,12 @@ namespace POSIMSWebApi.Application.Dtos.Inventory
         public DateTimeOffset? MaxCreationTime { get; set; }
         public DateTimeOffset? MinClosedTime { get; set; }
         public DateTimeOffset? MaxClosedTime { get; set; }
+    }
+
+    public class ItemData 
+    {
+        public Guid? InventoryId { get; set; }
+        public int ProductId { get; set; }
+        public decimal Qty { get; set; }
     }
 }

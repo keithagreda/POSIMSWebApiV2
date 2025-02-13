@@ -1,6 +1,8 @@
-﻿using DataAccess.EFCore.Repositories;
+﻿using Dapper;
+using DataAccess.EFCore.Repositories;
 using Domain.Entities;
 using Domain.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using POSIMSWebApi.Repositories;
 using System;
 using System.Collections.Generic;
@@ -55,6 +57,16 @@ namespace POSIMSWebApi.UnitOfWorks
             return await _context.SaveChangesAsync();
         }
 
+        public IQueryable<T> ExecuteRawQuery<T>(string sql, object parameters = null)
+        {
+            using var connection = _context.Database.GetDbConnection();
+            return connection.Query<T>(sql, parameters).AsQueryable();
+        }
+
+        public async Task<IQueryable<T>> ExecuteRawQueryAsync<T>(string sql, object parameters = null) where T : class
+        {
+            return await Task.FromResult(_context.Set<T>().FromSqlRaw(sql, parameters).AsQueryable());
+        }
 
         public void Dispose()
         {

@@ -113,6 +113,40 @@ namespace POSIMSWebApi.Controllers
             var result = await _salesService.GetPerMonthSales(year);
             return Ok(result);
         }
+        //[Authorize(Roles = UserRole.Admin + "," + UserRole.Owner)]
+        [HttpGet("GetSalesSummary")]
+        public async Task<ActionResult<ApiResponse<PaginatedResult<SalesSummaryDto>>>> GetSalesSummary([FromQuery] GenericSearchParams input)
+        {
+            var query = _unitOfWork.SalesDetail.GetQueryable()
+                .Include(e => e.SalesHeaderFk)
+                .ThenInclude(e => e.CustomerFk)
+                .Include(e => e.ProductFk)
+                .WhereIf(!string.IsNullOrWhiteSpace(input.FilterText), e => e.ProductFk.Name.Contains(input.FilterText))
+                .Select(e => new SalesSummaryDto
+                {
+                    CustomerName = e.SalesHeaderFk.CustomerFk != null ? e.SalesHeaderFk.CustomerFk.Name : "-",
+                    DateTime = e.CreationTime,
+                    SoldBy =  e.CreatedBy.ToString(),
+                    ProductName = e.ProductFk.Name,
+                    Quantity = e.Quantity,
+                    Rate = e.ProductPrice,
+                    TransNum = e.SalesHeaderFk.TransNum,
+                    TotalPrice = e.ActualSellingPrice != 0 ? e.ActualSellingPrice : e.Amount
+                });
+
+            var result = await query.ToPaginatedResult(input.PageNumber, input.PageSize).OrderByDescending(e => e.DateTime).ToListAsync();
+
+            foreach (var item in result)
+            {
+                var currUser = await _userManager.FindByIdAsync(item.SoldBy);
+
+                item.SoldBy = currUser?.UserName ?? "-";
+            }
+
+            var res = new PaginatedResult<SalesSummaryDto>(result, await query.CountAsync(), (int)input.PageNumber, (int)input.PageSize);
+            return Ok(ApiResponse<PaginatedResult<SalesSummaryDto>>.Success(res));
+        }
+
         [Authorize(Roles = UserRole.Admin + "," + UserRole.Cashier + "," + UserRole.Owner)]
         [HttpGet("ViewSales")]
         public async Task<ActionResult<ApiResponse<PaginatedResult<ViewSalesHeaderDto>>>> ViewSales([FromQuery]ViewSalesParams input)

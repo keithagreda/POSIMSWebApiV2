@@ -15,4 +15,5 @@ namespace Domain.Entities
         [ForeignKey("InventoryBeginningId")]
         public InventoryBeginning InventoryBeginningFk { get; set; }
     }
+
 }
